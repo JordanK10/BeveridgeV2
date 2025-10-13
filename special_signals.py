@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 # Global time grid
 T = 1.0               # total normalized time
-N = 600               # number of intervals; series has N+1 points
+N = 1000               # number of intervals; series has N+1 points
 SEED = 123            # RNG seed for reproducibility
 
 # Noise (applied additively, same schedule for all three signals)
@@ -32,19 +32,19 @@ SIGMA1 = 0.0000000000000001                  # amplitude (sin) or bump (piecewis
 RHO = 0.35                     # AR(1) persistence in noise ([-0.95, 0.95] recommended)
 
 # Positive step parameters: low -> high at t_step_pos
-POS_G_LOW = 100.0
-POS_G_HIGH = 110.0
+POS_G_LOW = 75.0
+POS_G_HIGH = 120.0
 T_STEP_POS = 1.0 / 3.0
 
 # Negative step parameters: high -> low at t_step_neg
-NEG_G_HIGH = 112.0
-NEG_G_LOW = 101.0
+NEG_G_HIGH = 120.0
+NEG_G_LOW = 75.0
 T_STEP_NEG = 1.0 / 3.0
 
 # Sine wave parameters: baseline + amp * sin(2π f t + phase)
 SINE_BASELINE = 106.0
-SINE_AMP = 6.0          # keep baseline > amp to ensure positivity in deterministic part
-SINE_FREQ = 1.0         # cycles over [0, T]
+SINE_AMP = 30.0          # keep baseline > amp to ensure positivity in deterministic part
+SINE_FREQ = 4.0         # cycles over [0, T]
 SINE_PHASE = 0.0        # radians
 
 # Output
@@ -140,7 +140,7 @@ def main():
         plt.title("Synthetic GDP (linear scale) with additive AR(1) noise")
         plt.legend()
         plt.tight_layout()
-        plt.show()
+        plt.savefig("special_signals.png")
 
 if __name__ == "__main__":
     main()

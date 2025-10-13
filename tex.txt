@@ -1,0 +1,59 @@
+
+Vacancies and unemployment are fundamentally different because vacancies can be adjusted by the firm up or down at will, whereas the firm can lower its employment by firing people but it can't raise it by un-firing them -- it has to wait for vacancies to be filled.  Employment increases when jobs are filled and decreases when workers are fired or when they spontaneously separate.  Vacancies change because the firm adjusts vacancies upward by posting new ones or downward by withdrawing existing postings.  However, the firm cannot have less than zero vacancies, which we will see is very important. 
+
+During an upturn a firm will increase its vacancies to hire more workers.  During a downturn, a firm has a choice between reducing its vacancies or firing workers or some combination of the two.  We have to make an assumption about how firms will make this choice.   A plausible behavioral assumption is that firms will stop hiring (setting vacancies to zero) before they start firing.  There are lots of reasons why a firm would prefer to stop hiring before firing, such as being kind to their employees, an unwillingess to create bad workforce morale or procedural simplicity.  Following this policy generates highly nonlinear behavior:  During a small downturn, the firm will reduce its vacancies as needed, without firing any workers.  However, as expected demand drops, once the firm's vacancies reach zero, it will fire workers as needed to match expected demand.   Both of these actions (firing and reducing vacancies) can happen instantaneously, in contrast to hiring workers, which takes time. Thus, during an upturn it will take time for a firm to hire workers and it will not be able to maximize profits perfectly, whereas during a (sufficiently large) downturn the firm has the levers it needs to satisfy Equation (2) and maximize profits.
+
+Let $D_i (t)$ be the expected demand for firm $i$ at time $t$.  Under the assumptions above, this translates into an employee target $\hat{e_i} (t) = D_i/\pi_i$, where $\pi_i$ is the average productivity per worker of firm $i$.  This means that the targeted change in number of employees for the firm is $D_i/\pi_i - e_i$.  For convenience, for the moment assume that $\pi_i$ is constant in time, and assume that the firm always expects to lose a fraction $s$ of its employees per unit time as a result of spontaneous separations, e.g. retirement.
+
+The dynamics of vacancies and unemployment can be written
+\begin{eqnarray}
+v_i (t) & = & \left[ D_i/\pi_i - e_i + e_i s/m \right]^+ \\
+\frac{de_i}{dt} & = & v_i m  - e_i s - \left[ D_i/\pi_i - e_i \right]^-,
+\end{eqnarray}
+where $[x]^+ = x$ if $x > 0$ and equals zero otherwise, and vice versa for $[x]^-$. 
+
+Assume that demand for each type of firm is given exogenously.  We expect that the sensitivity of the expected demand for the output of different firms to vary widely.  At one extreme there are firms for which it will be effectively constant, so that vacancies and the number of employees are constant, i.e.
+\begin{eqnarray}
+v_i (t) & = & e_i s/m\\
+\frac{de_i}{dt} & = & 0.
+\end{eqnarray}
+At the other extreme will be firms whose demand varies widely.  Note that previously we had a separate parameter for $v_0$; the equilibrium condition connects this to $s$, so that it is no longer needed.  Also note that we no longer have a separate differential equation for vacancies, which are now just a function of the gap between current employment and expected demand.
+
+In order to complete the model we need to compute the aggregate unemployment and vacancies, which are required as inputs for the matching function.  Letting $L$ be the size of the labor force, I believe this is:
+\begin{eqnarray}
+u  & = & 1 - e = 1 - \frac{\sum_{i=1}^N e_{i}}{L}\\
+v & = &  \frac{\sum_{i=1}^N v_{i}}{\sum_{i=1}^N v_{i} + \sum_{i=1}^N e_{i}}
+\end{eqnarray}
+I am not sure about how vacancies are normally defined -- Maria, is this correct?  Here for simplicity I will assume that vacancies are also defined relative to the size of the labor force, i.e.
+\begin{equation}
+v =  \frac{\sum_{i=1}^N v_{i}}{L}.
+\end{equation}
+To summarize, the model consists of a set of $N$ differential equations for the employment of each firm, which are weakly coupled through their common dependence on the matching function $m$.
+
+ In general the demand for each good might be unrelated, but we expect that they will all be influenced by a common factor, like GDP, so that their expected demands are cross sectionally correlated. Suppose, for example, that the demand for firm $i$ is 
+\begin{equation}
+D_i (t)/\pi_i = \sigma_i (1 + C_i G(t)),
+\end{equation}
+where $\sigma_i$ can be thought of as the "size" of the firm and $G(t)$ is a common signal about the state of the economy (which might or might not be related to GDP) that firm's use to evaluate expected demand  and $C_i$ is a coefficient that measures the sensitivity of the firm's demand to the state of the economy.  Since firm's only differ in their sizes and sensitivities, we could lump together all firms with similar sensitivity.
+
+We can do experiments to understand the properties of the model.  To do this we need to pick a set of firms together with their values of $S_i$ and $C_i$.  I suggest the following experiments:
+\begin{enumerate}
+\item
+Let $G(t)$ be a positive step function, corresponding to a positive signal about the state of the economy.  I think we should see a roughly exponential relaxation of the firms to their new higher levels of employment, and a corresponding drop in unemployment.  When the step function is bigger the relaxation will become slower because unemployment will be lower.  I say "roughly" because since $u$ will vary with time it will initially slow down as it proceeds.
+\item
+Let $G(t)$ be a negative step function, corresponding to a sufficiently negative signal about the state of the economy.  In this we should see the economy respond instantly -- the matching function won't matter.  This is because the number of workers can be adjusted by just firing them.
+\item
+Let $G(t)$ be a sine wave.  We should see a well-shaped Beveridge curve whose precise shape will depend on our choices of $\sigma_i$ and $C_i$.  We should be able to illustrate the phase shifting between vacancies and unemployment as we go around the cycle.
+\item
+Experiment with different assignments of $\sigma_i$ and $C_i$ to see how this affects the results.
+\item
+We can define an efficiency measure as the difference between the GDP the model would have if all firms had the workers they need and the GDP that is actually achieved (see remarks below for how GDP is defined in the model).  The model's economy will be fully efficient during downturns but inefficient in upturns, and the inefficiency will get worse as the matching function is smaller.  This will happen, for example, when unemployment is small.  It seems surprising to me that the economy becomes less efficient with small unemployment, and it will become completely inefficient if unemployment is zero.  This helps explain why unemployment has to be non-zero and is interesting in and of itself.  (I suppose this is already implicit in the usual DMP framework).
+\end{enumerate}
+
+A consequence of the behavioral assumption that firms prefer to reduce vacancies rather than fire workers causes highly nonlinear behavior.  These equations predict that vacancies will drop more than unemployment in small downturns but the reverse will be true in large downturns.  If vacancies are normally a small percentage, the constraint that they are non-negative limits the possible size of the reduction, whereas unemployment can theoretically go as high as $100\%$, i.e. the employment at a given firm can potentially go to zero.  This also suggests some memory effects:  If vacancies are reduced to zero in a given period, then they cannot be reduced anymore in the next period. For example, if there is a small downturn taking vacancies to zero in a given period, followed by a large downturn, vacancies will not respond at all to the large downturn.
+
+The above observation is potentially important as it may explain why our previous model worked so poorly for vacancies and suggests an improvement, which might be substantial.  Note that it is consistent with the behavior for COVID, where we see both unemployment spike strongly upward and vacancies downward, but the spike for vacancies is much smaller than that for unemployment.  I also think this could explain the skewness puzzle -- taking this properly into account should mean that we never see large downward spikes in vacancies -- in fact, during a boom vacancies might grow faster than they ever drop, so if anything we might expect positive skewness.
+
+Upturns are different because the only way firms can employ new workers is by issuing vacancies and hiring them.  In principle, if all workers are interchangeable, they might be able to post more vacancies than they need and then cancel them as soon as they hit their quota.  However, in general firms will have specific requirements for their workers, and don't want to risk hiring more workers than they need.  I think the most plausible assumption is that firms post vacancies for the workers they actually need and then wait as long as they have to in order to hire them, which is what we are assuming here.  This is a friction:  It means that during upturns firms are not maximizing profits and this is why unemployment doesn't track GDP perfectly.  Note that this makes the prediction that changes in unemployment during downturns should be more closely correlated to GDP than changes in unemployment during upturns.
+
+It will be important to take heterogeneity into account.  If there were only a single representative firm, and this firm is sensitive to changes in GDP, we would routinely see vacancies dropping to zero.  We don't see this in the aggregate data.  I believe that this is because some firms' outputs are insensitive to GDP.  We expect this for occupations like nurses, but even in a highly GDP sensitive industry like construction, there are always things being built and vacancies never go to zero because there is still demand for the outputs of some firms.  This can be dealt with by assigning different constants $C_i$ for different firms, where some of them are zero and some of them are large.
