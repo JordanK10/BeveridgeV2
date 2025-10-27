@@ -7,6 +7,7 @@ import matplotlib.colors as mcolors
 
 SENSITIVITY_COEFFICIENT = [.25] #C
 BASE_SIGMA = [100] #sigma
+POPULATION = 1
 PRODUCTIVITY_DENSITY = [100] #pi
 MATCHING_RATE_CONSTANT = [3E-4] #K
 INIT_VACANCIES = [100] #V0
@@ -227,322 +228,322 @@ def initialize_economy(demand_signal, firm_weights_k, base_sigma, surplus_xi, pr
     return sigmas, population_L, num_firms_N
 
 
-def run_sigma_sweep(c_value):
-    """
-    Runs a parameter sweep for sigma for a given C value and returns the results.
-    """
+# def run_sigma_sweep(c_value):
+#     """
+#     Runs a parameter sweep for sigma for a given C value and returns the results.
+#     """
 
-    areas = []
-    beveridge_curves = []
+#     areas = []
+#     beveridge_curves = []
     
-    print(f"Running sigma sweep for C = {c_value}...")
-    for sigma in sigmas:
+#     print(f"Running sigma sweep for C = {c_value}...")
+#     for sigma in sigmas:
 
-        # --- Initialize economy for this specific run ---
-        firm_weights_k = [1]
-        current_sigmas, current_population, _ = initialize_economy(
-            GDP['gdp_sine'], firm_weights_k, sigma, SURPLUS_XI, 
-            PRODUCTIVITY_DENSITY[0], c_value
-        )
-        init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
-        init_unemployment = current_population - init_employment
+#         # --- Initialize economy for this specific run ---
+#         firm_weights_k = [1]
+#         current_sigmas, current_population, _ = initialize_economy(
+#             GDP['gdp_sine'], firm_weights_k, sigma, SURPLUS_XI, 
+#             PRODUCTIVITY_DENSITY[0], c_value
+#         )
+#         init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
+#         init_unemployment = current_population - init_employment
 
-        firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c_value)
-        firm.set_time(TIME)
+#         firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c_value)
+#         firm.set_time(TIME)
 
-        unemployment, firms = run_market([firm], current_population, init_unemployment)
-        vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
+#         unemployment, firms = run_market([firm], current_population, init_unemployment)
+#         vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
 
-        loop_vacancies = vacancy_rate[400:800]
-        loop_unemployment = unemployment_rate[400:800]
-        area = compute_loop_area(loop_vacancies, loop_unemployment)
-        areas.append(area)
+#         loop_vacancies = vacancy_rate[400:800]
+#         loop_unemployment = unemployment_rate[400:800]
+#         area = compute_loop_area(loop_vacancies, loop_unemployment)
+#         areas.append(area)
 
-        if area <= 0.5:
-            beveridge_curves.append({'sigma': sigma, 'vr': vacancy_rate, 'ur': unemployment_rate, 'efficiency': firms[0].efficiency})
+#         if area <= 0.5:
+#             beveridge_curves.append({'sigma': sigma, 'vr': vacancy_rate, 'ur': unemployment_rate, 'efficiency': firms[0].efficiency})
             
-    return sigmas, areas, beveridge_curves
+#     return sigmas, areas, beveridge_curves
 
-def run_nested_sweep_sigma_major():
-    """
-    Runs the major sigma sweep for several minor C sweeps and plots the results.
-    """
+# def run_nested_sweep_sigma_major():
+#     """
+#     Runs the major sigma sweep for several minor C sweeps and plots the results.
+#     """
     
-    all_results = []
-    for c in c_values:
-        sigmas, areas, curves = run_sigma_sweep(c)
-        all_results.append({'c': c, 'sigmas': sigmas, 'areas': areas, 'curves': curves})
+#     all_results = []
+#     for c in c_values:
+#         sigmas, areas, curves = run_sigma_sweep(c)
+#         all_results.append({'c': c, 'sigmas': sigmas, 'areas': areas, 'curves': curves})
 
-    # Plot Area vs. Sigma for all C values
-    plt.figure(figsize=(10, 6))
-    for result in all_results:
-        plt.plot(result['sigmas'], result['areas'], marker='o', linestyle='-', label=f"C = {result['c']}")
-    plt.title("Area of Beveridge Curve vs. $\sigma$ for different C")
-    plt.xlabel("$\sigma$ (Firm Size)")
-    plt.ylabel("Area of Loop")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig("beveridge_area_vs_sigma_nested.png")
-    plt.close()
-    print("Saved beveridge_area_vs_sigma_nested.png")
+#     # Plot Area vs. Sigma for all C values
+#     plt.figure(figsize=(10, 6))
+#     for result in all_results:
+#         plt.plot(result['sigmas'], result['areas'], marker='o', linestyle='-', label=f"C = {result['c']}")
+#     plt.title("Area of Beveridge Curve vs. $\sigma$ for different C")
+#     plt.xlabel("$\sigma$ (Firm Size)")
+#     plt.ylabel("Area of Loop")
+#     plt.legend()
+#     plt.grid(True)
+#     plt.savefig("beveridge_area_vs_sigma_nested.png")
+#     plt.close()
+#     print("Saved beveridge_area_vs_sigma_nested.png")
 
-    # Plot Beveridge curves in a 2x2 subplot grid
-    fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
-    fig.suptitle('Beveridge Curves: $\sigma$ sweeps for different C values', fontsize=16)
+#     # Plot Beveridge curves in a 2x2 subplot grid
+#     fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
+#     fig.suptitle('Beveridge Curves: $\sigma$ sweeps for different C values', fontsize=16)
 
-    norm = mcolors.Normalize(vmin=250, vmax=2000)
-    cmap = plt.get_cmap('inferno')
+#     norm = mcolors.Normalize(vmin=250, vmax=2000)
+#     cmap = plt.get_cmap('inferno')
 
-    for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
-        ax.set_title(f"C = {result['c']}")
-        # By slicing the list with [::2], we plot only every other curve
-        for curve in result['curves'][::2]:
-            ax.plot(curve['ur'][400:800], curve['vr'][400:800], color=cmap(norm(curve['sigma'])))
-        ax.set_ylabel("Vacancy Rate")
-        ax.set_xlabel("Unemployment Rate")
-        ax.grid(True)
+#     for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
+#         ax.set_title(f"C = {result['c']}")
+#         # By slicing the list with [::2], we plot only every other curve
+#         for curve in result['curves'][::2]:
+#             ax.plot(curve['ur'][400:800], curve['vr'][400:800], color=cmap(norm(curve['sigma'])))
+#         ax.set_ylabel("Vacancy Rate")
+#         ax.set_xlabel("Unemployment Rate")
+#         ax.grid(True)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
-    cbar.set_label('$\sigma$ (Firm Size)')
+#     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+#     sm.set_array([])
+#     cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
+#     cbar.set_label('$\sigma$ (Firm Size)')
 
-    plt.savefig("beveridge_curves_nested_sweep.png")
-    plt.close(fig)
-    print("Saved beveridge_curves_nested_sweep.png")
+#     plt.savefig("beveridge_curves_nested_sweep.png")
+#     plt.close(fig)
+#     print("Saved beveridge_curves_nested_sweep.png")
 
-    # Plot Efficiency vs. Time in a 2x2 subplot grid
-    fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
-    fig.suptitle('Firm Efficiency: $\sigma$ sweeps for different C values', fontsize=16)
+#     # Plot Efficiency vs. Time in a 2x2 subplot grid
+#     fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
+#     fig.suptitle('Firm Efficiency: $\sigma$ sweeps for different C values', fontsize=16)
 
-    for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
-        ax.set_title(f"C = {result['c']}")
-        for curve in result['curves'][::2]:
-            ax.plot(TIME[5:],curve['efficiency'][5:], color=cmap(norm(curve['sigma'])))
-        ax.set_ylabel("Efficiency")
-        ax.set_xlabel("Time")
-        ax.grid(True)
-        # ax.set_ylim(.8, 1.1)
+#     for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
+#         ax.set_title(f"C = {result['c']}")
+#         for curve in result['curves'][::2]:
+#             ax.plot(TIME[5:],curve['efficiency'][5:], color=cmap(norm(curve['sigma'])))
+#         ax.set_ylabel("Efficiency")
+#         ax.set_xlabel("Time")
+#         ax.grid(True)
+#         # ax.set_ylim(.8, 1.1)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
-    cbar.set_label('$\sigma$ (Firm Size)')
+#     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+#     sm.set_array([])
+#     cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
+#     cbar.set_label('$\sigma$ (Firm Size)')
 
-    plt.savefig("efficiency_sigma_major.png")
-    plt.close(fig)
-    print("Saved efficiency_sigma_major.png")
+#     plt.savefig("efficiency_sigma_major.png")
+#     plt.close(fig)
+#     print("Saved efficiency_sigma_major.png")
 
-def run_c_sweep(sigma_value):
-    """
-    Runs a parameter sweep for C for a given sigma value and returns the results.
-    """
-    c_values_sweep = np.linspace(0.1, 1, 20)
-    areas = []
-    beveridge_curves = []
+# def run_c_sweep(sigma_value):
+#     """
+#     Runs a parameter sweep for C for a given sigma value and returns the results.
+#     """
+#     c_values_sweep = np.linspace(0.1, 1, 20)
+#     areas = []
+#     beveridge_curves = []
     
-    print(f"Running C sweep for sigma = {sigma_value}...")
-    for c in c_values_sweep:
-        # --- Initialize economy for this specific run ---
-        firm_weights_k = [1]
-        current_sigmas, current_population, _ = initialize_economy(
-            GDP['gdp_sine'], firm_weights_k, sigma_value, SURPLUS_XI, 
-            PRODUCTIVITY_DENSITY[0], c
-        )
-        init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
-        init_unemployment = current_population - init_employment
+#     print(f"Running C sweep for sigma = {sigma_value}...")
+#     for c in c_values_sweep:
+#         # --- Initialize economy for this specific run ---
+#         firm_weights_k = [1]
+#         current_sigmas, current_population, _ = initialize_economy(
+#             GDP['gdp_sine'], firm_weights_k, sigma_value, SURPLUS_XI, 
+#             PRODUCTIVITY_DENSITY[0], c
+#         )
+#         init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
+#         init_unemployment = current_population - init_employment
         
-        firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c)
-        firm.set_time(TIME)
+#         firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c)
+#         firm.set_time(TIME)
 
-        unemployment, firms = run_market([firm], current_population, init_unemployment)
-        vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
+#         unemployment, firms = run_market([firm], current_population, init_unemployment)
+#         vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
 
-        loop_vacancies = vacancy_rate[400:800]
-        loop_unemployment = unemployment_rate[400:800]
-        area = compute_loop_area(loop_vacancies, loop_unemployment)
-        areas.append(area)
+#         loop_vacancies = vacancy_rate[400:800]
+#         loop_unemployment = unemployment_rate[400:800]
+#         area = compute_loop_area(loop_vacancies, loop_unemployment)
+#         areas.append(area)
 
-        if area <= 0.5:
-            beveridge_curves.append({'c': c, 'vr': vacancy_rate, 'ur': unemployment_rate, 'efficiency': firms[0].efficiency})
+#         if area <= 0.5:
+#             beveridge_curves.append({'c': c, 'vr': vacancy_rate, 'ur': unemployment_rate, 'efficiency': firms[0].efficiency})
             
-    return c_values_sweep, areas, beveridge_curves
+#     return c_values_sweep, areas, beveridge_curves
 
-def run_nested_sweep_c_major():
-    """
-    Runs the major C sweep for several minor sigma sweeps and plots the results.
-    """
-    sigma_values_sweep = np.linspace(500, 2000, 4)
+# def run_nested_sweep_c_major():
+#     """
+#     Runs the major C sweep for several minor sigma sweeps and plots the results.
+#     """
+#     sigma_values_sweep = np.linspace(500, 2000, 4)
     
-    all_results = []
-    for sigma in sigma_values_sweep:
-        c_vals, areas, curves = run_c_sweep(sigma)
-        all_results.append({'sigma': sigma, 'c_values': c_vals, 'areas': areas, 'curves': curves})
+#     all_results = []
+#     for sigma in sigma_values_sweep:
+#         c_vals, areas, curves = run_c_sweep(sigma)
+#         all_results.append({'sigma': sigma, 'c_values': c_vals, 'areas': areas, 'curves': curves})
 
-    # Plot Area vs. C for all sigma values
-    plt.figure(figsize=(10, 6))
-    for result in all_results:
-        plt.plot(result['c_values'], result['areas'], marker='o', linestyle='-', label=f"$\sigma$ = {result['sigma']:.0f}")
-    plt.title("Area of Beveridge Curve vs. C for different $\sigma$")
-    plt.xlabel("C (Sensitivity Coefficient)")
-    plt.ylabel("Area of Loop")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig("beveridge_area_vs_c_nested.png")
-    plt.close()
-    print("Saved beveridge_area_vs_c_nested.png")
+#     # Plot Area vs. C for all sigma values
+#     plt.figure(figsize=(10, 6))
+#     for result in all_results:
+#         plt.plot(result['c_values'], result['areas'], marker='o', linestyle='-', label=f"$\sigma$ = {result['sigma']:.0f}")
+#     plt.title("Area of Beveridge Curve vs. C for different $\sigma$")
+#     plt.xlabel("C (Sensitivity Coefficient)")
+#     plt.ylabel("Area of Loop")
+#     plt.legend()
+#     plt.grid(True)
+#     plt.savefig("beveridge_area_vs_c_nested.png")
+#     plt.close()
+#     print("Saved beveridge_area_vs_c_nested.png")
 
-    # Plot Beveridge curves in a 2x2 subplot grid
-    fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
-    fig.suptitle('Beveridge Curves: C sweeps for different $\sigma$ values', fontsize=16)
+#     # Plot Beveridge curves in a 2x2 subplot grid
+#     fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
+#     fig.suptitle('Beveridge Curves: C sweeps for different $\sigma$ values', fontsize=16)
 
-    norm = mcolors.Normalize(vmin=0.1, vmax=1.0)
-    cmap = plt.get_cmap('inferno')
+#     norm = mcolors.Normalize(vmin=0.1, vmax=1.0)
+#     cmap = plt.get_cmap('inferno')
 
-    for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
-        ax.set_title(f"$\sigma$ = {result['sigma']:.0f}")
-        for curve in result['curves'][::2]:
-            ax.plot(curve['ur'][400:800], curve['vr'][400:800], color=cmap(norm(curve['c'])))
-        ax.set_ylabel("Vacancy Rate")
-        ax.set_xlabel("Unemployment Rate")
-        ax.grid(True)
+#     for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
+#         ax.set_title(f"$\sigma$ = {result['sigma']:.0f}")
+#         for curve in result['curves'][::2]:
+#             ax.plot(curve['ur'][400:800], curve['vr'][400:800], color=cmap(norm(curve['c'])))
+#         ax.set_ylabel("Vacancy Rate")
+#         ax.set_xlabel("Unemployment Rate")
+#         ax.grid(True)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
-    cbar.set_label('C (Sensitivity Coefficient)')
+#     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+#     sm.set_array([])
+#     cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
+#     cbar.set_label('C (Sensitivity Coefficient)')
 
-    plt.savefig("beveridge_curves_c_major_sweep.png")
-    plt.close(fig)
-    print("Saved beveridge_curves_c_major_sweep.png")
+#     plt.savefig("beveridge_curves_c_major_sweep.png")
+#     plt.close(fig)
+#     print("Saved beveridge_curves_c_major_sweep.png")
 
-    # Plot Efficiency vs. Time in a 2x2 subplot grid
-    fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
-    fig.suptitle('Firm Efficiency: C sweeps for different $\sigma$ values', fontsize=16)
+#     # Plot Efficiency vs. Time in a 2x2 subplot grid
+#     fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
+#     fig.suptitle('Firm Efficiency: C sweeps for different $\sigma$ values', fontsize=16)
 
-    for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
-        ax.set_title(f"$\sigma$ = {result['sigma']:.0f}")
-        for curve in result['curves'][::2]:
-            ax.plot(TIME[5:],curve['efficiency'][5:], color=cmap(norm(curve['c'])))
-        ax.set_ylabel("Efficiency")
-        ax.set_xlabel("Time")
-        ax.grid(True)
-        ax.set_ylim(.8, 1.1)
+#     for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
+#         ax.set_title(f"$\sigma$ = {result['sigma']:.0f}")
+#         for curve in result['curves'][::2]:
+#             ax.plot(TIME[5:],curve['efficiency'][5:], color=cmap(norm(curve['c'])))
+#         ax.set_ylabel("Efficiency")
+#         ax.set_xlabel("Time")
+#         ax.grid(True)
+#         ax.set_ylim(.8, 1.1)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
-    cbar.set_label('C (Sensitivity Coefficient)')
+#     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+#     sm.set_array([])
+#     cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
+#     cbar.set_label('C (Sensitivity Coefficient)')
 
-    plt.savefig("efficiency_c_major.png")
-    plt.close(fig)
-    print("Saved efficiency_c_major.png")
+#     plt.savefig("efficiency_c_major.png")
+#     plt.close(fig)
+#     print("Saved efficiency_c_major.png")
 
-def run_k_sweep_for_c(c_value):
-    """
-    Runs a parameter sweep for K for a given C value and returns the results.
-    """
-    k_values_sweep = np.logspace(np.log10(5e-5), np.log10(5e-4), 20)
-    areas = []
-    beveridge_curves = []
+# def run_k_sweep_for_c(c_value):
+#     """
+#     Runs a parameter sweep for K for a given C value and returns the results.
+#     """
+#     k_values_sweep = np.logspace(np.log10(5e-5), np.log10(5e-4), 20)
+#     areas = []
+#     beveridge_curves = []
     
-    print(f"Running K sweep for C = {c_value}...")
-    sigma_value = BASE_SIGMA[0]
+#     print(f"Running K sweep for C = {c_value}...")
+#     sigma_value = BASE_SIGMA[0]
 
-    # --- Initialize economy for this sweep (doesn't depend on K) ---
-    firm_weights_k = [1]
-    current_sigmas, current_population, _ = initialize_economy(
-        GDP['gdp_sine'], firm_weights_k, sigma_value, SURPLUS_XI, 
-        PRODUCTIVITY_DENSITY[0], c_value
-    )
-    init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
-    init_unemployment = current_population - init_employment
+#     # --- Initialize economy for this sweep (doesn't depend on K) ---
+#     firm_weights_k = [1]
+#     current_sigmas, current_population, _ = initialize_economy(
+#         GDP['gdp_sine'], firm_weights_k, sigma_value, SURPLUS_XI, 
+#         PRODUCTIVITY_DENSITY[0], c_value
+#     )
+#     init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
+#     init_unemployment = current_population - init_employment
 
-    for k in k_values_sweep:
-        firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], k, c_value)
-        firm.set_time(TIME)
+#     for k in k_values_sweep:
+#         firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], k, c_value)
+#         firm.set_time(TIME)
 
-        unemployment, firms = run_market([firm], current_population, init_unemployment)
-        vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
+#         unemployment, firms = run_market([firm], current_population, init_unemployment)
+#         vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
 
-        loop_vacancies = vacancy_rate[400:800]
-        loop_unemployment = unemployment_rate[400:800]
-        area = compute_loop_area(loop_vacancies, loop_unemployment)
-        areas.append(area)
+#         loop_vacancies = vacancy_rate[400:800]
+#         loop_unemployment = unemployment_rate[400:800]
+#         area = compute_loop_area(loop_vacancies, loop_unemployment)
+#         areas.append(area)
 
-        if area <= 0.5:
-            beveridge_curves.append({'k': k, 'vr': vacancy_rate, 'ur': unemployment_rate, 'efficiency': firms[0].efficiency})
+#         if area <= 0.5:
+#             beveridge_curves.append({'k': k, 'vr': vacancy_rate, 'ur': unemployment_rate, 'efficiency': firms[0].efficiency})
             
-    return k_values_sweep, areas, beveridge_curves
+#     return k_values_sweep, areas, beveridge_curves
 
-def run_nested_sweep_k_major():
-    """
-    Runs the major C sweep for several minor K sweeps and plots the results.
-    """
-    all_results = []
-    for c in c_values:
-        k_vals, areas, curves = run_k_sweep_for_c(c)
-        all_results.append({'c': c, 'k_values': k_vals, 'areas': areas, 'curves': curves})
+# def run_nested_sweep_k_major():
+#     """
+#     Runs the major C sweep for several minor K sweeps and plots the results.
+#     """
+#     all_results = []
+#     for c in c_values:
+#         k_vals, areas, curves = run_k_sweep_for_c(c)
+#         all_results.append({'c': c, 'k_values': k_vals, 'areas': areas, 'curves': curves})
 
-    # Plot Area vs. K for all C values
-    plt.figure(figsize=(10, 6))
-    for result in all_results:
-        plt.plot(result['k_values'], result['areas'], marker='o', linestyle='-', label=f"C = {result['c']}")
-    plt.title("Area of Beveridge Curve vs. K for different C")
-    plt.xlabel("K (Matching Rate Constant)")
-    plt.ylabel("Area of Loop")
-    plt.xscale('log')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig("beveridge_area_vs_k_for_c.png")
-    plt.close()
-    print("Saved beveridge_area_vs_k_for_c.png")
+#     # Plot Area vs. K for all C values
+#     plt.figure(figsize=(10, 6))
+#     for result in all_results:
+#         plt.plot(result['k_values'], result['areas'], marker='o', linestyle='-', label=f"C = {result['c']}")
+#     plt.title("Area of Beveridge Curve vs. K for different C")
+#     plt.xlabel("K (Matching Rate Constant)")
+#     plt.ylabel("Area of Loop")
+#     plt.xscale('log')
+#     plt.legend()
+#     plt.grid(True)
+#     plt.savefig("beveridge_area_vs_k_for_c.png")
+#     plt.close()
+#     print("Saved beveridge_area_vs_k_for_c.png")
 
-    # Plot Beveridge curves in a 2x2 subplot grid
-    fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
-    fig.suptitle('Beveridge Curves: K sweeps for different C values', fontsize=16)
+#     # Plot Beveridge curves in a 2x2 subplot grid
+#     fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
+#     fig.suptitle('Beveridge Curves: K sweeps for different C values', fontsize=16)
 
-    norm = mcolors.Normalize(vmin=5e-5, vmax=5e-4)
-    cmap = plt.get_cmap('inferno')
+#     norm = mcolors.Normalize(vmin=5e-5, vmax=5e-4)
+#     cmap = plt.get_cmap('inferno')
 
-    for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
-        ax.set_title(f"C = {result['c']}")
-        for curve in result['curves'][::2]:
-            ax.plot(curve['ur'][400:800], curve['vr'][400:800], color=cmap(norm(curve['k'])))
-        ax.set_ylabel("Vacancy Rate")
-        ax.set_xlabel("Unemployment Rate")
-        ax.grid(True)
+#     for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
+#         ax.set_title(f"C = {result['c']}")
+#         for curve in result['curves'][::2]:
+#             ax.plot(curve['ur'][400:800], curve['vr'][400:800], color=cmap(norm(curve['k'])))
+#         ax.set_ylabel("Vacancy Rate")
+#         ax.set_xlabel("Unemployment Rate")
+#         ax.grid(True)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
-    cbar.set_label('K (Matching Rate Constant)')
+#     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+#     sm.set_array([])
+#     cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
+#     cbar.set_label('K (Matching Rate Constant)')
 
-    plt.savefig("beveridge_curves_k_major_sweep.png")
-    plt.close(fig)
-    print("Saved beveridge_curves_k_major_sweep.png")
+#     plt.savefig("beveridge_curves_k_major_sweep.png")
+#     plt.close(fig)
+#     print("Saved beveridge_curves_k_major_sweep.png")
 
-    # Plot Efficiency vs. Time in a 2x2 subplot grid
-    fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
-    fig.suptitle('Firm Efficiency: K sweeps for different C values', fontsize=16)
+#     # Plot Efficiency vs. Time in a 2x2 subplot grid
+#     fig, axs = plt.subplots(2, 2, figsize=(15, 12), constrained_layout=True)
+#     fig.suptitle('Firm Efficiency: K sweeps for different C values', fontsize=16)
 
-    for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
-        ax.set_title(f"C = {result['c']}")
-        for curve in result['curves'][::2]:
-            ax.plot(TIME[5:],curve['efficiency'][5:], color=cmap(norm(curve['k'])))
-        ax.set_ylabel("Efficiency")
-        ax.set_xlabel("Time")
-        ax.grid(True)
-        ax.set_ylim(.8, 1.1)
+#     for i, (ax, result) in enumerate(zip(axs.flat, all_results)):
+#         ax.set_title(f"C = {result['c']}")
+#         for curve in result['curves'][::2]:
+#             ax.plot(TIME[5:],curve['efficiency'][5:], color=cmap(norm(curve['k'])))
+#         ax.set_ylabel("Efficiency")
+#         ax.set_xlabel("Time")
+#         ax.grid(True)
+#         ax.set_ylim(.8, 1.1)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
-    cbar.set_label('K (Matching Rate Constant)')
+#     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+#     sm.set_array([])
+#     cbar = fig.colorbar(sm, ax=axs, shrink=0.6, location='bottom')
+#     cbar.set_label('K (Matching Rate Constant)')
 
-    plt.savefig("efficiency_k_major.png")
-    plt.close(fig)
-    print("Saved efficiency_k_major.png")
+#     plt.savefig("efficiency_k_major.png")
+#     plt.close(fig)
+#     print("Saved efficiency_k_major.png")
 
 def run_single_timeseries():
     """
