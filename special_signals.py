@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 # Global time grid
 T = 1.0               # total normalized time
-N = 1000               # number of intervals; series has N+1 points
+N = 10000               # number of intervals; series has N+1 points
 SEED = 123            # RNG seed for reproducibility
 
 # Noise (applied additively, same schedule for all three signals)
@@ -44,7 +44,7 @@ T_STEP_NEG = 1.0 / 3.0
 # Sine wave parameters: baseline + amp * sin(2π f t + phase)
 SINE_BASELINE = 106.0
 SINE_AMP = 30.0          # keep baseline > amp to ensure positivity in deterministic part
-SINE_FREQ = 4.0         # cycles over [0, T]
+SINE_FREQ = 2.0         # cycles over [0, T]
 SINE_PHASE = 0.0        # radians
 
 # Output

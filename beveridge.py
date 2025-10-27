@@ -6,17 +6,15 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 
 SENSITIVITY_COEFFICIENT = [.25] #C
-FIRM = [1000] #sigma
+BASE_SIGMA = [100] #sigma
 PRODUCTIVITY_DENSITY = [100] #pi
-MATCHING_RATE_CONSTANT = [5E-4] #K
-INIT_EMPLOYMENT = [400] #E0
+MATCHING_RATE_CONSTANT = [3E-4] #K
 INIT_VACANCIES = [100] #V0
-INIT_UNEMPLOYMENT = 2000
+INIT_UNEMPLOYMENT = 0
 SEPARATION_RATE = .05 #s
+SURPLUS_XI = 0.05 #xi
 
-POPULATION = np.sum(INIT_EMPLOYMENT)+INIT_UNEMPLOYMENT
-
-STEPS = 800
+STEPS = 10000
 dt = 1
 
 TIME = range(int(STEPS/dt))
@@ -42,9 +40,9 @@ class Firm:
         plt.close()
 
     def plot_employment(self, unemployment):
-        plt.plot(self.time,np.log(self.employment),label = "employment")
-        plt.plot(self.time,np.log(unemployment),label = "unemployment")
-        plt.plot(self.time,np.log(self.vacancies),label = "vacancies")
+        plt.plot(self.time,(self.employment),label = "employment")
+        plt.plot(self.time,(unemployment),label = "unemployment")
+        plt.plot(self.time,(self.vacancies),label = "vacancies")
         plt.xlabel("Time")
         plt.ylabel("Log Value")
         plt.title("Sensit. Coeff. = " + str(self.sensitivity_coefficient)+" Firm Size = " + str(self.firm_size)+" Matching Rt = " + str(self.matching_rate_constant))
@@ -123,8 +121,7 @@ class Firm:
 
         self.productivity_density = init_productivity_density
         self.matching_rate_constant = matching_rate_constant
-        self.demand = self.computeDemand(signal)
-        self.employment_demand = self.demand/self.productivity_density
+        self.employment_demand = self.computeDemand(signal)
         self.target = self.set_target()
 
         #Initialize matching function
@@ -156,14 +153,14 @@ def compute_loop_area(x, y):
     y = np.asarray(y)
     return 0.5 * np.abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
 
-def run_market(firms):
-    unemployment = [INIT_UNEMPLOYMENT for _ in TIME]
+def run_market(firms, population, init_unemployment):
+    unemployment = [init_unemployment for _ in TIME]
     for t in TIME[:-1]:
         for firm in firms:
             firm.update_vacancies(t,unemployment[t])
             firm.update_employment(t)
         
-        unemployment[t+1] = POPULATION - np.sum([firm.employment[t+1] for firm in firms])
+        unemployment[t+1] = population - np.sum([firm.employment[t+1] for firm in firms])
     
     return unemployment,firms
         
@@ -184,6 +181,52 @@ def compute_rates(firms, plot=True):
 
     return vacancy_rate,unemployment_rate
 
+def initialize_economy(demand_signal, firm_weights_k, base_sigma, surplus_xi, productivity_density, sensitivity_coefficient):
+    """
+    Initializes the economy's structural parameters using a non-circular method.
+
+    This function calculates firm sizes (sigma_i) and the total labor force (L)
+    based on a base firm size, firm weights, and the peak of the demand signal.
+
+    Args:
+        demand_signal (pd.Series): The time series of the economic signal (G(t)).
+        firm_weights_k (list or np.array): A vector of weights k_i for each firm.
+        base_sigma (float): The base firm size (sigma), an anchor for the economy's scale.
+        surplus_xi (float): The desired labor surplus fraction (e.g., 0.05 for 5%).
+        productivity_density (float): The productivity per worker (pi).
+        sensitivity_coefficient (float): The firm sensitivity to the economic signal (C).
+                                       (Assumed to be the same for all firms for now).
+
+    Returns:
+        tuple: A tuple containing:
+            - sigmas (np.array): An array of sigma values for each firm.
+            - population (float): The total labor force L.
+            - num_firms (int): The number of firms N.
+    """
+    num_firms_N = len(firm_weights_k)
+    k = np.asarray(firm_weights_k)
+
+    # --- Step 1: Calculate firm sizes (sigma_i) from the base sigma ---
+    sigmas = k * base_sigma
+
+    # --- Step 2: Calculate peak target employment ---
+    # Find the peak of the economic signal G(t)
+    g_max = demand_signal.max()
+
+    # Calculate the target employment for each firm at the peak signal
+    # target_employment_i = sigma_i * (1 + C * g_max)
+    peak_target_employment_per_firm = sigmas * (1 + sensitivity_coefficient * g_max)
+    total_peak_target_employment = np.sum(peak_target_employment_per_firm)
+
+    # --- Step 3: Calculate the total labor force L ---
+    # L is the peak workforce plus the surplus
+    population_L = total_peak_target_employment * (1 + surplus_xi)
+    print("Population: ", population_L)
+    print("Sigmas: ", sigmas)
+    print("Num Firms: ", num_firms_N)
+    return sigmas, population_L, num_firms_N
+
+
 def run_sigma_sweep(c_value):
     """
     Runs a parameter sweep for sigma for a given C value and returns the results.
@@ -195,10 +238,19 @@ def run_sigma_sweep(c_value):
     print(f"Running sigma sweep for C = {c_value}...")
     for sigma in sigmas:
 
-        firm = Firm(GDP['gdp_sine'], sigma, PRODUCTIVITY_DENSITY[0], INIT_EMPLOYMENT[0], INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c_value)
+        # --- Initialize economy for this specific run ---
+        firm_weights_k = [1]
+        current_sigmas, current_population, _ = initialize_economy(
+            GDP['gdp_sine'], firm_weights_k, sigma, SURPLUS_XI, 
+            PRODUCTIVITY_DENSITY[0], c_value
+        )
+        init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
+        init_unemployment = current_population - init_employment
+
+        firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c_value)
         firm.set_time(TIME)
 
-        unemployment, firms = run_market([firm])
+        unemployment, firms = run_market([firm], current_population, init_unemployment)
         vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
 
         loop_vacancies = vacancy_rate[400:800]
@@ -291,10 +343,19 @@ def run_c_sweep(sigma_value):
     
     print(f"Running C sweep for sigma = {sigma_value}...")
     for c in c_values_sweep:
-        firm = Firm(GDP['gdp_sine'], sigma_value, PRODUCTIVITY_DENSITY[0], INIT_EMPLOYMENT[0], INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c)
+        # --- Initialize economy for this specific run ---
+        firm_weights_k = [1]
+        current_sigmas, current_population, _ = initialize_economy(
+            GDP['gdp_sine'], firm_weights_k, sigma_value, SURPLUS_XI, 
+            PRODUCTIVITY_DENSITY[0], c
+        )
+        init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
+        init_unemployment = current_population - init_employment
+        
+        firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], c)
         firm.set_time(TIME)
 
-        unemployment, firms = run_market([firm])
+        unemployment, firms = run_market([firm], current_population, init_unemployment)
         vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
 
         loop_vacancies = vacancy_rate[400:800]
@@ -386,12 +447,22 @@ def run_k_sweep_for_c(c_value):
     beveridge_curves = []
     
     print(f"Running K sweep for C = {c_value}...")
-    sigma_value = FIRM[0]
+    sigma_value = BASE_SIGMA[0]
+
+    # --- Initialize economy for this sweep (doesn't depend on K) ---
+    firm_weights_k = [1]
+    current_sigmas, current_population, _ = initialize_economy(
+        GDP['gdp_sine'], firm_weights_k, sigma_value, SURPLUS_XI, 
+        PRODUCTIVITY_DENSITY[0], c_value
+    )
+    init_employment = current_sigmas[0] / PRODUCTIVITY_DENSITY[0]
+    init_unemployment = current_population - init_employment
+
     for k in k_values_sweep:
-        firm = Firm(GDP['gdp_sine'], sigma_value, PRODUCTIVITY_DENSITY[0], INIT_EMPLOYMENT[0], INIT_VACANCIES[0], k, c_value)
+        firm = Firm(GDP['gdp_sine'], current_sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], k, c_value)
         firm.set_time(TIME)
 
-        unemployment, firms = run_market([firm])
+        unemployment, firms = run_market([firm], current_population, init_unemployment)
         vacancy_rate, unemployment_rate = compute_rates(firms, plot=False)
 
         loop_vacancies = vacancy_rate[400:800]
@@ -478,13 +549,33 @@ def run_single_timeseries():
     Runs a single simulation with the default parameters and plots the primary time series.
     """
     print("Running single simulation to generate time series plots...")
+
+    # --- Initialize economy using constraints ---
+    firm_weights_k = [1]
+    base_sigma = BASE_SIGMA[0]
+    sigmas, population, num_firms = initialize_economy(
+        GDP['gdp_sine'], 
+        firm_weights_k, 
+        base_sigma, 
+        SURPLUS_XI, 
+        PRODUCTIVITY_DENSITY[0], 
+        SENSITIVITY_COEFFICIENT[0]
+    )
+
+    init_employment = sigmas[0] / PRODUCTIVITY_DENSITY[0]
+    init_unemployment = population - init_employment
     
-    # Initialize a single firm with default parameters from the top of the file
-    firm = Firm(GDP['gdp_sine'], FIRM[0], PRODUCTIVITY_DENSITY[0], INIT_EMPLOYMENT[0], INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], SENSITIVITY_COEFFICIENT[0])
+    # Update global INIT_UNEMPLOYMENT to be consistent with the new population
+    global INIT_UNEMPLOYMENT; global POPULATION
+    INIT_UNEMPLOYMENT = init_unemployment
+    POPULATION = population
+    
+    # Initialize a single firm with the new constrained parameters
+    firm = Firm(GDP['gdp_sine'], sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment, INIT_VACANCIES[0], MATCHING_RATE_CONSTANT[0], SENSITIVITY_COEFFICIENT[0])
     firm.set_time(TIME)
 
     # Run the market simulation
-    unemployment, firms = run_market([firm])
+    unemployment, firms = run_market([firm], population, init_unemployment)
 
     # Generate and save the plots
     firms[0].plot_handler(["demand", "employment"], unemployment)
@@ -496,10 +587,10 @@ def run_single_timeseries():
     print("- beveridge.png")
 
 def main():
-    # run_single_timeseries()
-    run_nested_sweep_sigma_major()
-    run_nested_sweep_c_major()
-    run_nested_sweep_k_major()
+    run_single_timeseries()
+    # run_nested_sweep_sigma_major()
+    # run_nested_sweep_c_major()
+    # run_nested_sweep_k_major()
 
 if __name__ == "__main__":
     main()

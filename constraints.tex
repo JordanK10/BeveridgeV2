@@ -1,0 +1,12 @@
+If the firm size is given by $\sigma_i$, the unemployed population is given by $U=L-\sum_{i=1}^Ne_i$, then we can set $\sigma_i$ to something sensible given the size of the economy. Consider the constraint
+\begin{equation}
+    \sigma_i=L(k_i/N-\xi).
+\end{equation}
+If firm weight $k_i=1$ for all firms, then firms are uniform in size. We could also assign 
+\begin{equation}
+    k_i=2i/(N+1)
+\end{equation} for an ascending firm size or impose a power law firm size relationship such that $k_i=i^{-a}A$ where $a$ with normalization $A$. Generally, we constraint $k_i$ such that $\sum_ik_i=N$. The surplus parameter $\xi$ sets the size of the unemployment pool when all firms are at occupational capacity. For example, if we desire a surplus of 5\%, we assign $\xi=.05$. 
+
+Now, what's left is to constrain the population size. 
+We can constrain with the data directly which will be useful for calibrating the data when real data max and capacity are known. 
+Assume that the population is set to the maximum production target, ensuring a relationship between the labor pool and th potential productivity of that pool in the data.  Assuming $t_\textrm{max}$ is the timestep at which this condition is satisfied, the population would look something like $L=[D(t_{max})/\pi]+\xi$ when $N=1$. More generally, this could be $L=\sum_{i=1}^N[D_i(t_{\textrm{max}})/\pi_i]+\xi$.
