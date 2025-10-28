@@ -1,0 +1,27 @@
+Recalling the equations:
+\begin{eqnarray}
+v_i (t) & = & \left[ D_i/\pi_i - e_i + e_i s/m \right]^+ \label{vacancy}\\
+\frac{de_i}{dt} & = & v_i m  - e_i s + \left[ D_i/\pi_i - e_i \right]^-\label{employmentchange},
+\end{eqnarray}
+Assuming a time-independent signal at zero vacancies, the change in employment becomes
+\begin{equation}
+    0=[\sigma(1+CG_0)(1+\xi)-e(1+s/m)]^+
+\end{equation}
+It follows that vacancies are only posted when 
+\begin{equation}
+CG_0>\frac{e(1+s/m)}{\sigma (1+\xi)}-1
+\end{equation}
+When $G_0=0$, vacancies will still be posted when 
+\begin{equation}
+    \frac e\sigma>\frac{(1+\xi)}{1+s/m}.
+\end{equation}
+If we assume no surplus of labor, or $\xi=0$, vacancies are not posted as $s\rightarrow 0$, or when separations are negligible relative to the matching rate. A larger surplus also counteracts the separation rate.
+
+The equilibrium employment level, or whe $de/dt=0$ under two conditions. The first condition, when the target firm size is the current firm size and the third term is zero, the equilibrium firm size is $e=vm/s$, or
+\begin{equation}
+    e=v\frac{e}{\sigma(1+\xi)-e}.
+\end{equation}
+We can plug this term into the definition of the matching rate, $m=Ku$ to get an equilibrium matching rate
+\begin{equation}
+    K_{eq}=es/vu
+\end{equation}
