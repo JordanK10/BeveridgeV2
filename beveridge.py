@@ -40,18 +40,6 @@ class Firm:
         plt.savefig("demand.png")
         plt.close()
 
-    def plot_employment(self, unemployment):
-        plt.plot(self.time,(self.employment),label = "employment")
-        plt.plot(self.time,(unemployment),label = "unemployment")
-        plt.plot(self.time,(self.vacancies),label = "vacancies")
-        plt.xlabel("Time")
-        plt.ylabel("Log Value")
-        plt.title("Sensit. Coeff. = " + str(self.sensitivity_coefficient)+" Firm Size = " + str(self.firm_size)+" Matching Rt = " + str(self.matching_rate_constant))
-        plt.legend()
-        # plt.ylim(top = np.log(POPULATION),bottom = 0)
-        plt.savefig("employment.png")
-        plt.close()
-
     def update_vacancies(self,t,unemployment):
         self.matching_function[t] = self.matching_rate_constant*unemployment
         # print(" VACANCY UPDATE")
@@ -92,7 +80,7 @@ class Firm:
         # print("New Employment:    ", self.employment[t+1])
 
         # Calculate efficiency for the current step
-        target = self.vacancies[t]
+        target = self.employment_demand[t]
         actual = self.employment[t+1]
 
         if target <= 0:
@@ -125,25 +113,9 @@ class Firm:
         self.matching_rate_constant = matching_rate_constant
         # self.matching_rate_constant = (POPULATION/500)*(1-SURPLUS_XI)*SEPARATION_RATE
         self.target = self.set_target()
-
-        #Initialize matching function
         
-
-        self.employment_rate=[]
-        
-
-
     def set_time(self, time):
         self.time = time
-
-    def plot_handler(self, plot_list, unemployment):
-
-        for plot in plot_list:
-            if plot == "demand":
-                self.plot_demand()
-
-            if plot == "employment":
-                self.plot_employment(unemployment)
 
 def compute_loop_area(x, y):
     """
@@ -171,7 +143,7 @@ def run_market(firms, population, init_unemployment):
 
     return unemployment,firms
         
-def compute_rates(firms, population=None, plot=True):
+def compute_rates(firms, economy_name, population=None, plot=True):
     vacancies = [np.sum([firm.vacancies[t] for firm in firms]) for t in TIME]
     employment = [np.sum([firm.employment[t] for firm in firms]) for t in TIME]
 
@@ -185,13 +157,53 @@ def compute_rates(firms, population=None, plot=True):
         plt.plot(vacancy_rate,unemployment_rate,label = "signal")
         plt.xlabel("vacancy rate")
         plt.ylabel("unemployment rate")
+        plt.axhline(y=SURPLUS_XI, color='red', linestyle='--')
         plt.legend()
-        plt.savefig("beveridge.png")
+        plt.savefig("beveridge"+economy_name+".png")
         plt.close()
 
     return vacancy_rate,unemployment_rate
 
-def initialize_economy(demand_signal, firm_weights_k, base_sigma, surplus_xi, productivity_density, sensitivity_coefficient):
+
+def plot_multi_employment(firms, unemployment, time, population, economy_name):
+    """
+    Plots the employment of multiple individual firms and the aggregate unemployment.
+    """
+    plt.figure(figsize=(10, 6))
+    
+    # Plot employment for each firm
+    colors = cm.get_cmap('tab10', len(firms))
+    for i, firm in enumerate(firms):
+        plt.plot(time, firm.employment, label=f"Employment Firm {i+1} (C={firm.sensitivity_coefficient})", color=colors(i), linestyle='-')
+        plt.plot(time, firm.vacancies, label=f"Vacancies Firm {i+1}", color=colors(i), linestyle='--')
+
+    # Plot aggregate unemployment
+    plt.plot(time, unemployment, label="Aggregate Unemployment", color='black', linestyle=':')
+
+    # --- Population Conservation Check ---
+    # Plot theoretical constant population
+    plt.axhline(y=population, color='gray', linestyle='--', label='Total Population (Theoretical)')
+
+    # Calculate and plot the actual total people in the system
+    total_employment = np.sum([np.array(f.employment) for f in firms], axis=0)
+    total_people_actual = total_employment + np.array(unemployment)
+    plt.plot(time, total_people_actual, color='blue', linestyle='-.', label='Total Population (Actual)')
+
+    # Add theoretical minimum unemployment line
+    plt.axhline(y=SURPLUS_XI * population, color='red', linestyle='--', label=f'$\\xi L$ = {SURPLUS_XI*population:.0f}')
+
+
+    plt.xlabel("Time")
+    plt.ylabel("Number of People")
+    plt.title(f"Employment Dynamics ({economy_name})")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"employment_{economy_name}.png")
+    plt.close()
+    print(f"Saved multi-firm employment plot to employment_{economy_name}.png")
+
+
+def initialize_economy(demand_signal, firm_weights_k, base_sigma, surplus_xi, productivity_density, sensitivity_coefficients):
     """
     Initializes the economy's structural parameters using a non-circular method.
 
@@ -204,7 +216,7 @@ def initialize_economy(demand_signal, firm_weights_k, base_sigma, surplus_xi, pr
         base_sigma (float): The base firm size (sigma), an anchor for the economy's scale.
         surplus_xi (float): The desired labor surplus fraction (e.g., 0.05 for 5%).
         productivity_density (float): The productivity per worker (pi).
-        sensitivity_coefficient (float): The firm sensitivity to the economic signal (C).
+        sensitivity_coefficients (list or np.array): The firm sensitivities to the economic signal (C_i).
                                        (Assumed to be the same for all firms for now).
 
     Returns:
@@ -215,6 +227,7 @@ def initialize_economy(demand_signal, firm_weights_k, base_sigma, surplus_xi, pr
     """
     num_firms_N = len(firm_weights_k)
     k = np.asarray(firm_weights_k)
+    C = np.asarray(sensitivity_coefficients)
 
     # --- Step 1: Calculate firm sizes (sigma_i) from the base sigma ---
     sigmas = k * base_sigma
@@ -224,8 +237,8 @@ def initialize_economy(demand_signal, firm_weights_k, base_sigma, surplus_xi, pr
     g_max = demand_signal.max()
 
     # Calculate the target employment for each firm at the peak signal
-    # target_employment_i = sigma_i * (1 + C * g_max)
-    peak_target_employment_per_firm = sigmas * (1 + sensitivity_coefficient * g_max)
+    # target_employment_i = sigma_i * (1 + C_i * g_max)
+    peak_target_employment_per_firm = sigmas * (1 + C * g_max)
     total_peak_target_employment = np.sum(peak_target_employment_per_firm)
 
     # --- Step 3: Calculate the total labor force L ---
@@ -264,7 +277,7 @@ def run_k_sweep_for_c(c_value):
         firm.set_time(TIME)
 
         unemployment, firms = run_market([firm], current_population, init_unemployment)
-        vacancy_rate, unemployment_rate = compute_rates(firms, current_population, plot=False)
+        vacancy_rate, unemployment_rate = compute_rates(firms, "single", current_population, plot=False)
 
         loop_vacancies = vacancy_rate[400:800]
         loop_unemployment = unemployment_rate[400:800]
@@ -334,7 +347,7 @@ def run_nested_sweep_k_major():
         ax.set_ylabel("Efficiency")
         ax.set_xlabel("Time")
         ax.grid(True)
-        ax.set_ylim(.3, 1.1)
+        ax.set_ylim(.85, 1.1)
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
@@ -381,17 +394,146 @@ def run_single_timeseries():
     unemployment, firms = run_market([firm], population, init_unemployment)
 
     # Generate and save the plots
-    firms[0].plot_handler(["demand", "employment"], unemployment)
-    compute_rates(firms, population, plot=True)
+    plot_multi_employment(firms, unemployment, TIME, population, "single_firm")
+    vacancy_rate, unemployment_rate = compute_rates(firms, "single", population, plot=True)
     
     print("\nGenerated single-run plots:")
     print("- demand.png")
     print("- employment.png")
     print("- beveridge.png")
 
+    return vacancy_rate, unemployment_rate
+
+def run_double_timeseries():
+    """
+    Runs a simulation with two firms competing in the same labor market.
+    """
+    print("Running dual-firm simulation...")
+
+    # --- Define parameters for two distinct firms ---
+    # Firm 1: Larger, less sensitive to market changes
+    # Firm 2: Smaller, more sensitive (volatile)
+    firm_weights_k = [0.7, 0.3] # Firm 1 is 70% of base size, Firm 2 is 30%
+    sensitivity_coefficients = [0.25, 0.75] # C values for each firm
+
+    # --- Initialize economy using constraints for the two-firm system ---
+    base_sigma = BASE_SIGMA[0]
+    sigmas, population, num_firms = initialize_economy(
+        GDP['gdp_sine'], 
+        firm_weights_k, 
+        base_sigma, 
+        SURPLUS_XI, 
+        PRODUCTIVITY_DENSITY[0], 
+        sensitivity_coefficients
+    )
+    
+    # --- Calculate initial state based on t=0 demand for both firms ---
+    initial_signal = GDP['gdp_sine'].iloc[0] if 'gdp_sine' in GDP.columns else 0
+    init_employment_firm1 = sigmas[0] * (1 + sensitivity_coefficients[0] * initial_signal)
+    init_employment_firm2 = sigmas[1] * (1 + sensitivity_coefficients[1] * initial_signal)
+    init_unemployment = population - (init_employment_firm1 + init_employment_firm2)
+
+    # --- Create Firm instances ---
+    firm1 = Firm(GDP['gdp_sine'], sigmas[0], PRODUCTIVITY_DENSITY[0], init_employment_firm1, 0, MATCHING_RATE_CONSTANT[0], sensitivity_coefficients[0])
+    firm2 = Firm(GDP['gdp_sine'], sigmas[1], PRODUCTIVITY_DENSITY[0], init_employment_firm2, 0, MATCHING_RATE_CONSTANT[0], sensitivity_coefficients[1])
+    
+    firm1.set_time(TIME)
+    firm2.set_time(TIME)
+    
+    # --- Run the market simulation ---
+    firms = [firm1, firm2]
+    unemployment, firms = run_market(firms, population, init_unemployment)
+
+    # --- Generate and save the plots ---
+    # Aggregate Beveridge Curve
+    vacancy_rate, unemployment_rate = compute_rates(firms, "double", population, plot=True) 
+    # Individual employment dynamics
+    plot_multi_employment(firms, unemployment, TIME, population, "two_firm")
+
+    return vacancy_rate, unemployment_rate
+
+def run_four_firm_timeseries():
+    """
+    Runs a simulation with four equal-sized firms competing in the same labor market.
+    """
+    print("Running four-firm simulation...")
+
+    # --- Define parameters for four distinct firms ---
+    # All firms are equal size (k=0.25)
+    # Two are stable (low C), two are volatile (high C)
+    firm_weights_k = [0.25, 0.25, 0.25, 0.25]
+    sensitivity_coefficients = [0.25, 0.25, 0.75, 0.75] 
+
+    # --- Initialize economy ---
+    base_sigma = BASE_SIGMA[0]
+    sigmas, population, num_firms = initialize_economy(
+        GDP['gdp_sine'], firm_weights_k, base_sigma, SURPLUS_XI, 
+        PRODUCTIVITY_DENSITY[0], sensitivity_coefficients
+    )
+    
+    # --- Calculate initial state for all firms ---
+    initial_signal = GDP['gdp_sine'].iloc[0] if 'gdp_sine' in GDP.columns else 0
+    
+    firms = []
+    total_initial_employment = 0
+    for i in range(num_firms):
+        init_emp = sigmas[i] * (1 + sensitivity_coefficients[i] * initial_signal)
+        total_initial_employment += init_emp
+        firm = Firm(GDP['gdp_sine'], sigmas[i], PRODUCTIVITY_DENSITY[0], init_emp, 0, MATCHING_RATE_CONSTANT[0], sensitivity_coefficients[i])
+        firm.set_time(TIME)
+        firms.append(firm)
+
+    init_unemployment = population - total_initial_employment
+    
+    # --- Run the market simulation ---
+    unemployment, firms = run_market(firms, population, init_unemployment)
+
+    # --- Generate and save the plots ---
+    vacancy_rate, unemployment_rate = compute_rates(firms, "four_firm", population, plot=True) 
+    plot_multi_employment(firms, unemployment, TIME, population, "four_firm")
+
+    return vacancy_rate, unemployment_rate
+
+
+def plot_beveridge_comparison(curves_data):
+    """
+    Plots multiple Beveridge curves on the same axes for comparison.
+
+    Args:
+        curves_data (dict): A dictionary where keys are labels for the curves
+                            and values are tuples of (vacancy_rate, unemployment_rate).
+    """
+    plt.figure(figsize=(8, 6))
+    
+    for label, (vr, ur) in curves_data.items():
+        plt.plot(ur,vr, label=label)
+
+    plt.xlabel("Vacancy Rate")
+    plt.ylabel("Unemployment Rate")
+    plt.title("Beveridge Curve Comparison")
+    plt.axvline(x=SURPLUS_XI, color='red', linestyle='--', label=f'Min Unemployment Rate ($\\xi={SURPLUS_XI}$)')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig("beveridge_comparison.png")
+    plt.close()
+    print("Saved Beveridge curve comparison plot to beveridge_comparison.png")
+
+
 def main():
-    run_single_timeseries()
-    run_nested_sweep_k_major()
+    # Run simulations and get the curve data
+    vr_single, ur_single = run_single_timeseries()
+    vr_double, ur_double = run_double_timeseries()
+    vr_four, ur_four = run_four_firm_timeseries()
+
+    # Plot the comparison
+    comparison_data = {
+        "Single Firm": (vr_single, ur_single),
+        "Two Firms (Aggregate)": (vr_double, ur_double),
+        "Four Firms (Aggregate)": (vr_four, ur_four)
+    }
+    plot_beveridge_comparison(comparison_data)
+
+    # run_nested_sweep_k_major()
 
 if __name__ == "__main__":
     main()
