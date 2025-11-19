@@ -1,0 +1,12 @@
+### Question 2: What defines a shock?
+Starting from our definition of $\dot e$, we can define a growth rate in $e$ as $\gamma_e=\dot e/e$. The growth rate is defined
+$\gamma_e=vm/e-s+[D/(\pi e)-1]^-$. 
+If we had a decline in demand large enough such that $D/(\pi e)<1$, we satisfy the brackets. Aslo, assume that the demand shock is so large that there are no vacancies. We can rearrange in terms of the demand. 
+$D=\pi e(1+\gamma_e+s)$
+Define the demand ratio, which is $R_D=D/(\pi e)$, or the ratio of demand to the efficiency of the current labor pool, $\pi e$
+$R_D=1+s+\gamma_e$
+This is very informative. We can define here the relationship between a demand shock and an employment shock via $\gamma_e$. For example, with a separation rate of $.05$, and a demand shock that decreases demand to $.8$, then $\gamma_e$ makes up the difference as $\gamma_e=-.25$.
+As a demonstration, let's implement a shock from a stable maximal employment level of productivity. Assume some $G_\textrm{peak}$, at which unemployment is minimized and $G_\textrm{shock}$ where. The demand ratio os given by
+$R_D=\frac{1+CG_\textrm{peak}}{1+CG_\textrm{shock}}$ 
+To determine the size of a shock that would result in a precise change to unemployment, we plug in $R_D=1+s+\gamma_e$, and solve for $G_\textrm{shock}$. This gives us
+$G_\textrm{shock}=\frac{(1+s+\gamma_e)(1+CG_\textrm{peak})-1}{C}$
