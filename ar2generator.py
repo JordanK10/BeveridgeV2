@@ -5,91 +5,77 @@ import matplotlib.pyplot as plt
 
 gdp0 = 1000.0
 
-def simulate_ar2_skewed(
-    n_periods=400,
-    avg_growth=0.02,          # mean growth rate
-    volatility=0.02,          # std of innovations BEFORE skew transformation
-    phi1=0.5,
-    phi2=0.2,
-    target_skewness=0.5,      # ~0.4–0.6 typical for GDP growth
-    seed=42
-):
-    """
-    Simulate an AR(2) process with skewed innovations.
-    
-    The innovations use the transformation:
-        z = eps + alpha*(eps**2 - 1)
-    where eps ~ N(0,1). For alpha > 0 this produces right-skewed noise.
-    
-    Empirically (checked via simulation):
-        skew(z) ≈ 6 * alpha     for small alpha
-    
-    Parameters
-    ----------
-    target_skewness : float
-        Desired skewness of the shock distribution (approximate).
-    """
-    
-    rng = np.random.default_rng(seed)
-
-    # --- approximate alpha from desired skewness ---
-    alpha = target_skewness / 6.0
-    alpha = float(np.clip(alpha, 0.0, 1.0))  # safety bounds
-
-    # --- generate skewed shocks ---
-    eps = rng.normal(size=n_periods)
-    z = eps + alpha * (eps**2 - 1.0)
-
-    # standardize to mean 0, variance 1
-    z = (z - z.mean()) / z.std()
-
-    # scale by desired volatility
-    shocks = volatility * z
-
-    # --- AR(2) recursion ---
-    g = np.zeros(n_periods)
-    g[0] = avg_growth
-    g[1] = avg_growth
-
-    for t in range(2, n_periods):
-        g[t] = (
-            avg_growth
-            + phi1 * (g[t-1] - avg_growth)
-            + phi2 * (g[t-2] - avg_growth)
-            + shocks[t]
-        )
-
-    return g
-
 
 if __name__ == "__main__":
     # User-facing parameters (change these)
-    n_periods = 400
-    avg_growth = 0.02        # 2% mean growth
-    volatility = 0.02        # std dev of shocks
-    target_skewness = 0.5    # GDP-like
-    phi1 = 0.5
-    phi2 = 0.2
+    n_periods = 80          # 20 years * 4 quarters/year
+    avg_growth = 0.02
+    volatility = 0.02
+    target_skewness = -0.5   # Negative skew for sharp recessions
+    phi1 = 0.8
+    phi2 = 0.1
     seed = 42
 
-    # Generate skewed AR(2)
-    ar2_series = simulate_ar2_skewed(
-        n_periods=n_periods,
-        avg_growth=avg_growth,
-        volatility=volatility,
-        phi1=phi1,
-        phi2=phi2,
-        target_skewness=target_skewness,
-        seed=seed
-    )
+    # --- 1. Generate skewed innovations (the random shocks) ---
+    rng = np.random.default_rng(seed)
+    alpha = target_skewness / 6.0
+    alpha = float(np.clip(alpha, 0.0, 1.0))
+    eps = rng.normal(size=n_periods)
+    z = eps + alpha * (eps**2 - 1.0)
+    z = (z - z.mean()) / z.std() # Standardize
+    shocks = volatility * z
 
-    gdp =gdp0*np.cumprod(1+ar2_series)
+    # --- 2. Engineer the large, negative shock directly into the innovations ---
+    shock_start = 40  # Year 11 * 4 quarters/year
+    shock_end = 44    # Year 12 * 4 quarters/year
+    # A shock to the growth rate is an external shock to the innovations.
+    # A -5% growth rate is a shock of -0.07 relative to the mean growth of 0.02.
+    shock_value = -0.07
+    shocks[shock_start:shock_end] = shock_value
 
-    plt.plot(np.log(gdp))
-    plt.savefig("ar2_signal.png")
+    # --- 3. Run the AR(2) recursion using the modified shocks ---
+    ar2_series = np.zeros(n_periods)
+    ar2_series[0] = avg_growth
+    ar2_series[1] = avg_growth
+
+    for t in range(2, n_periods):
+        ar2_series[t] = (
+            avg_growth
+            + phi1 * (ar2_series[t-1] - avg_growth)
+            + phi2 * (ar2_series[t-2] - avg_growth)
+            + shocks[t]
+        )
+    
+    # --- Detrend the final signal to ensure it's centered on zero ---
+    # This makes it a pure fluctuation signal for the firm model.
+    ar2_series_detrended = ar2_series - np.mean(ar2_series)
+    
+    gdp = gdp0 * np.cumprod(1 + ar2_series_detrended)
+    
+    # --- Create an informative plot with subplots ---
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    
+    # Plot 1: GDP Level
+    ax1.plot(gdp, label="GDP Level (AR2 process)")
+    ax1.set_title("Engineered AR(2) Demand Signal")
+    ax1.set_ylabel("Demand Level")
+    ax1.grid(True)
+    ax1.legend()
+    
+    # Plot 2: Growth Rate
+    ax2.plot(ar2_series_detrended, label="GDP Growth Rate (Detrended)", color='orange')
+    ax2.axvspan(shock_start, shock_end, color='red', alpha=0.2, label='Engineered Shock')
+    ax2.set_ylabel("Growth Rate")
+    ax2.set_xlabel("Time")
+    ax2.grid(True)
+    ax2.legend()
+    
+    plt.tight_layout()
+    plt.savefig("ar2_signal_detailed.png")
+    print("Saved detailed AR(2) signal plot to ar2_signal_detailed.png")
 
     # Save output
-    result = {"ar2": gdp}
+    result = {"ar2_level": gdp, "ar2_growth": ar2_series_detrended}
 
     with open("ar2_signal.pkl", "wb") as f:
         pickle.dump(result, f)

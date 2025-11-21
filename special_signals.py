@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 # Global time grid
 T = 1.0               # total normalized time
-N = 1999              # number of intervals; series has N+1 points
+N = 1000                # number of intervals; series has N+1 = 80 points
 SEED = 123            # RNG seed for reproducibility
 
 # Noise (applied additively, same schedule for all three signals)

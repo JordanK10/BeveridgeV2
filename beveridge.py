@@ -6,19 +6,20 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import os
 import special_signals  # Import to access signal parameters
+import pickle
 
 SENSITIVITY_COEFFICIENT = [.25] #C
 BASE_SIGMA = [10] #sigma
 POPULATION = 1
 PRODUCTIVITY_DENSITY = [100] #pi
-MATCHING_RATE_CONSTANT = [0.0051] #K - Increased to make matching more efficient at low unemployment
+MATCHING_RATE_CONSTANT = [0.01] #K - Increased to make matching more efficient at low unemployment
 INIT_VACANCIES = [100] #V0
 INIT_UNEMPLOYMENT = 0
-SEPARATION_RATE = 0.005 #s - Reduced to lower churn force and peak unemployment
+SEPARATION_RATE = 0.05 #s - Reduced to lower churn force and peak unemployment
 SURPLUS_XI = 0.05 #xi
 
-STEPS = 200
-dt = 0.1
+STEPS = 10    # 20 years
+dt = 1     # 4 quarters per year -> 80 total steps
 
 TIME = range(int(STEPS/dt))
 
@@ -29,8 +30,40 @@ k_values_sweep = np.logspace(np.log10(5e-5), np.log10(5e-4), 4)
 
 
 
-#read in GDP data from dummy_gdp.pkl
+#read in GDP data from dummy_demand.pkl
 GDP = pd.read_pickle('dummy_demand.pkl')
+
+# Load and process the AR2 signal data
+try:
+    with open("ar2_signal.pkl", "rb") as f:
+        ar2_data = pickle.load(f)
+    # Use the growth rates, not the levels
+    ar2_growth_signal = ar2_data['ar2_growth']
+    
+    # Get target length from the main GDP dataframe
+    target_len = len(GDP)
+    current_len = len(ar2_growth_signal)
+    
+    # Interpolate from its original length to the simulation length if they don't match
+    if current_len != target_len:
+        print(f"Interpolating AR(2) signal from {current_len} to {target_len} steps.")
+        x_current = np.linspace(0, 1, current_len)
+        x_target = np.linspace(0, 1, target_len)
+        ar2_interpolated = np.interp(x_target, x_current, ar2_growth_signal)
+    else:
+        ar2_interpolated = ar2_growth_signal
+    
+    # --- Amplify the signal to create a stronger business cycle ---
+    amplification_factor = 20.0
+    ar2_amplified = ar2_interpolated * amplification_factor
+    
+    # Add to the main GDP dataframe
+    GDP['gdp_ar2'] = ar2_amplified
+    print("Successfully loaded and processed ar2_signal.pkl (using amplified growth rates)")
+
+except (FileNotFoundError, KeyError):
+    print("ar2_signal.pkl not found or invalid. Skipping AR2 experiment.")
+    GDP['gdp_ar2'] = np.zeros(len(TIME)) # Add a dummy column to prevent errors
 
 # firm class definition that has data on demand, vacancies, and employment
 class Firm:
@@ -252,46 +285,14 @@ def plot_employment_growth_rate(firms, time, economy_name, output_dir=None):
     # Add a horizontal line at 0 for reference
     plt.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
     
-    # Add a vertical line at the shock time (t=0.5 * STEPS, which is at index STEPS/dt * 0.5)
-    shock_time_index = int(STEPS / dt * 0.5)
+    # Add a vertical line at the shock time
+    shock_time_index = 40
     if shock_time_index < len(time):
         plt.axvline(x=time[shock_time_index], color='red', linestyle=':', linewidth=2, 
-                   label='Shock Time', alpha=0.7)
+                   label='Recession Start', alpha=0.7)
         
-        # Calculate theoretical shock growth rate dynamically, explicitly accounting for separations
-        G_peak = special_signals.SHOCK_G_PEAK
-        G_drop = special_signals.SHOCK_G_DROP
-        
-        # Access the firm's sensitivity coefficient and other parameters
-        C = firms[0].sensitivity_coefficient
-        sigma = firms[0].firm_size
-        s = SEPARATION_RATE
-        
-        # Get the employment level at the moment of shock (just before the update)
-        # We need to find the employment at shock_time_index
-        e_current = firms[0].employment[shock_time_index] if shock_time_index < len(firms[0].employment) else firms[0].employment[0]
-        
-        # Calculate the new target employment after the shock
-        # new_target = sigma * (1 + C * G_drop)
-        new_target = sigma * (1 + C * G_drop)
-        
-        # Calculate the two components of the employment update:
-        # 1. Flow update (separations): -e * s * dt (when v=0)
-        flow_update = -e_current * s * dt
-        
-        # 2. Demand update (firing): new_target - e_current
-        demand_update = new_target - e_current
-        
-        # Total update is the sum of both
-        total_update = flow_update + demand_update
-        
-        # The growth rate plotted is: (e_new - e_old) / (e_old * dt) * 100
-        # where e_new = e_old + total_update
-        # So: total_update / (e_old * dt) * 100
-        theoretical_val = (total_update / (e_current * dt)) * 100 
-        
-        plt.plot(time[shock_time_index], theoretical_val, 'ro', markersize=8, 
-                 label=f'Theoretical Rate ({theoretical_val:.1f}%/unit time)')
+        # NOTE: The theoretical calculation is now more complex as the shock is no longer
+        # a simple step function. We will omit it for this AR(2) plot for clarity.
 
     plt.xlabel("Time")
     plt.ylabel("Employment Growth Rate (% per time unit)")
@@ -495,10 +496,9 @@ def run_simulation_for_signal(signal_name, economy_name_suffix, output_dir=None)
     unemployment, firms = run_market([firm], population, init_unemployment)
 
     # --- DEBUG: Print detailed time-series data around the shock ---
-    # The shock happens at t = 0.5 * T_total. 
-    # Total steps = STEPS/dt = 200/0.1 = 2000. Shock at t=1000.
-    shock_idx = int(STEPS / dt * 0.5)
-    debug_window = 10
+    # The shock happens at t = 40 in the AR2 signal.
+    shock_idx = 40
+    debug_window = 5 # Show 5 steps before and after
     print("\n" + "="*60)
     print(f"DEBUG DATA AROUND SHOCK (t={shock_idx})")
     print("="*60)
@@ -738,13 +738,30 @@ def run_shock_experiment():
         
     run_simulation_for_signal('gdp_shock', 'shock', output_dir=output_dir)
 
+def run_ar2_experiment():
+    """
+    Runs the single firm simulation with the AR(2) signal and saves output to 'gdp_curve' folder.
+    """
+    print("Running AR(2) experiment...")
+    
+    output_dir = "gdp_curve"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created directory: {output_dir}")
+        
+    if 'gdp_ar2' in GDP.columns and not np.all(GDP['gdp_ar2'] == 0):
+        run_simulation_for_signal('gdp_ar2', 'ar2', output_dir=output_dir)
+    else:
+        print("Skipping AR(2) experiment because the signal was not loaded.")
+
 def main():
     # Run shock experiment
-    run_shock_experiment()
+    # run_shock_experiment()
+    # run_ar2_experiment()
     
     # compare_sine_special()
     # Run simulations and get the curve data
-    # vr_single, ur_single = run_single_timeseries()
+    vr_single, ur_single = run_single_timeseries()
     # vr_double, ur_double = run_double_timeseries()
     # vr_four, ur_four = run_four_firm_timeseries()
 
