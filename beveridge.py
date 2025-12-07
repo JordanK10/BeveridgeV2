@@ -18,10 +18,8 @@ INIT_UNEMPLOYMENT = 0
 SEPARATION_RATE = 0.05 #s - Reduced to lower churn force and peak unemployment
 SURPLUS_XI = 0.05 #xi
 
-STEPS = 10    # 20 years
-dt = 1     # 4 quarters per year -> 80 total steps
-
-TIME = range(int(STEPS/dt))
+STEPS = 20
+TIME = range(STEPS)
 
 
 sigmas = np.linspace(250, 1900, 20)
@@ -30,8 +28,14 @@ k_values_sweep = np.logspace(np.log10(5e-5), np.log10(5e-4), 4)
 
 
 
-#read in GDP data from dummy_demand.pkl
-GDP = pd.read_pickle('dummy_demand.pkl')
+# Read in GDP data from the constant 10‑step signal in dummy_gdp.pkl
+GDP = pd.read_pickle('dummy_gdp.pkl')
+
+# Map the generic 'gdp' column to the signal names expected elsewhere in the code
+if 'gdp' in GDP.columns:
+    # Use the same constant signal for the sine/custom placeholders
+    GDP['gdp_sine'] = GDP['gdp']
+    GDP['gdp_custom'] = GDP['gdp']
 
 # Load and process the AR2 signal data
 try:
@@ -108,7 +112,7 @@ class Firm:
         flow_update = self.vacancies[t] * self.matching_function[t] - self.employment[t] * self.separation_rate[t]
         
         # Scale the flow by the timestep 'dt'
-        update = (flow_update * dt) + demand_update
+        update = flow_update + demand_update
 
 
         # print("Net Change: ",update)
@@ -266,12 +270,12 @@ def plot_employment_growth_rate(firms, time, economy_name, output_dir=None):
     for i, firm in enumerate(firms):
         employment = np.array(firm.employment)
         
-        # Calculate growth rate: (e[t+1] - e[t]) / (e[t] * dt)
+        # Calculate growth rate: (e[t+1] - e[t]) / e[t]
         # Handle division by zero by using np.where
         growth_rate = np.zeros_like(employment, dtype=float)
         for t in range(len(employment) - 1):
             if employment[t] > 0:
-                growth_rate[t] = (employment[t+1] - employment[t]) / (employment[t] * dt)
+                growth_rate[t] = (employment[t+1] - employment[t]) / employment[t]
             else:
                 growth_rate[t] = 0.0
         
@@ -514,7 +518,7 @@ def run_simulation_for_signal(signal_name, economy_name_suffix, output_dir=None)
             
             # Calculate growth rate
             if t < len(TIME) - 1 and emp > 0:
-                growth = (firms[0].employment[t+1] - emp) / (emp * dt) * 100
+                growth = (firms[0].employment[t+1] - emp) / emp * 100
             else:
                 growth = 0.0
                 
@@ -557,6 +561,13 @@ def run_single_timeseries():
         PRODUCTIVITY_DENSITY[0], 
         SENSITIVITY_COEFFICIENT[0]
     )
+
+    # --- Stability Check ---
+    K = MATCHING_RATE_CONSTANT[0]
+    C = SENSITIVITY_COEFFICIENT
+    signal = GDP['gdp_sine']
+    if not check_stability(K, population, sigmas, C, signal):
+        return None, None # Abort simulation
 
     # Calculate initial employment based on the demand at t=0
     initial_signal = GDP['gdp_sine'].iloc[0]
@@ -723,6 +734,40 @@ def plot_beveridge_comparison(curves_data, filename="beveridge_comparison.png"):
     plt.savefig(filename)
     plt.close()
     print(f"Saved Beveridge curve comparison plot to {filename}")
+
+
+def check_stability(K, population, sigmas, sensitivity_coefficients, signal):
+    """
+    Checks if the chosen K value is likely to cause simulation instability based on
+    the condition K <= 1/u_max to prevent jitter.
+    """
+    G_min = signal.min()
+    C = np.asarray(sensitivity_coefficients)
+    
+    # Calculate target employment at the signal minimum
+    total_target_employment_at_min = np.sum(sigmas * (1 + C * G_min))
+    
+    # Calculate the maximum unemployment level
+    u_max = population - total_target_employment_at_min
+    
+    if u_max <= 0:
+        print("Warning: Maximum unemployment (u_max) is zero or negative.")
+        print("         The stability bound for K cannot be computed.")
+        print("         The model may be unstable for any K > 0.")
+        return True # Allow simulation to proceed with a warning
+
+    K_bound = 1 / u_max
+    
+    if K > K_bound:
+        print("\n--- SIMULATION STABILITY WARNING ---")
+        print(f"The chosen matching rate K = {K:.4f} is ABOVE the stability bound.")
+        print(f"The stability condition requires K <= 1/u_max.")
+        print(f"In this scenario, u_max = {u_max:.2f}, which gives an upper bound for K of {K_bound:.4f}.")
+        print("This will likely result in unstable, jittery oscillations.")
+        print("Aborting simulation. Please choose a smaller K or adjust model parameters.")
+        return False
+        
+    return True
 
 
 def run_shock_experiment():

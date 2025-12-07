@@ -1,0 +1,302 @@
+%\documentclass[aps,superscriptaddress,twocolumn,nofootinbib,12pt,tightenlines]{revtex4}
+\documentclass[aps,superscriptaddress,nofootinbib,12pt,tightenlines]{revtex4}
+
+\makeatletter
+
+\usepackage{natbib}
+\usepackage{dcolumn}
+\usepackage{graphicx}
+\usepackage{amsmath}
+%\usepackage[hang,small,bf,centerlast]{caption} 
+%\setlength{\captionmargin}{20pt}
+% \textwidth = 6.5 in
+%\textheight = 9 in
+%\oddsidemargin = 0.0 in
+%\evensidemargin = 0.0 in
+%\topmargin = 0.0 in
+%\headheight = 0.0 in
+%\headsep = 0.0 in
+%\parskip = 0.2in
+
+\def\refname{References and Notes}
+\begin{document}
+\title{A behavioral micro-founded disequilibrium explanation of the Beveridge curve}
+
+
+\author{Doyne}
+%\email[]{jdf@santafe.edu}
+%\affiliation{Institute for New Economic Thinking at the Oxford Martin School and Mathematical Institute}
+%\affiliation{Santa Fe Institute, 1399 Hyde Park Road, Santa Fe, NM 87501}
+
+\begin{abstract}
+I develop a microscopic model based on the assumption of profit maximization by firms under a linear production function (in labor) and derive an aggregate model under the assumption that there are only two firms.  I also sketch how we can use a model with $N$ firms to model the aggregate data, which can be written as a partial differential equation in the limit as $N \to \infty$.   The resulting model is fully microfounded, and is substantially different from our current model (and even more different from the DMP framework).  The resulting model makes some striking testable predictions.
+\end{abstract}
+\maketitle
+
+% \end{equation}
+%\tableofcontents
+%
+%\
+%\begin{figure}[ptb]
+%\begin{center}
+%%\includegraphics[scale=0.3,angle=-90]{}
+%\end{center}
+%\caption{}
+%\label{}
+%\end{figure}
+
+My strategy here is to first derive equations for an individual firm to maximize its profits and write down a micro-founded ABM for unemployment and vacancies at the level of individual firms (as we will see, the resulting model will be very simple).  Then we can derive an aggregate equation for unemployment and vacanciesfor the case with two firms.  We will assume that firms would like to adjust their employees to maximize profits.  They are prevented from doing this by frictions, but they will still maximize profits as best they can.
+
+To maximize profits firms to adjust production to match demand.  Assume all firms have a linear production function so that production is proportional to the number of employees.  Also assume that unemployed workers will take the best job available, and the matching function $m$ accounts for any frictions in finding a job.    Assume for now that all firms have the same matching function that depends on aggregate unemployment $u$ and vacancies $v$.  To make the dependence of matching on vacancies explicit, I am rewriting the matching function as $m(u,v) = m'(u,v)/v$, where $m'$ is the conventional form of the matching function.  In this case the matching rate for a given firm $i$ that posts vacancies $v_i$ is $v_i m(u,v)$.  Thus the simple matching function $K uv$ in the purely aggregate context is replaced here by $K u v_i$, with $m = K u$.  This means that firms that place more vacancies will hire workers faster but they also have more workers to hire. 
+
+Vacancies and unemployment are fundamentally different because vacancies can be adjusted by the firm up or down at will, whereas the firm can lower its employment by firing people but it can't raise it by un-firing them -- it has to wait for vacancies to be filled.  Employment increases when jobs are filled and decreases when workers are fired or when they spontaneously separate.  Vacancies change because the firm adjusts vacancies upward by posting new ones or downward by withdrawing existing postings.  However, the firm cannot have less than zero vacancies, which we will see is very important. 
+
+During an upturn a firm will increase its vacancies to hire more workers.  During a downturn, a firm has a choice between reducing its vacancies or firing workers or some combination of the two.  We have to make an assumption about how firms will make this choice.   A plausible behavioral assumption is that firms will stop hiring (setting vacancies to zero) before they start firing.  There are lots of reasons why a firm would prefer to stop hiring before firing, such as being kind to their employees, an unwillingess to create bad workforce morale or procedural simplicity.  Following this policy generates highly nonlinear behavior:  During a small downturn, the firm will reduce its vacancies as needed, without firing any workers.  However, as expected demand drops, once the firm's vacancies reach zero, it will fire workers as needed to match expected demand.   Both of these actions (firing and reducing vacancies) can happen instantaneously, in contrast to hiring workers, which takes time. Thus, during an upturn it will take time for a firm to hire workers and it will not be able to maximize profits perfectly, whereas during a (sufficiently large) downturn the firm has the levers it needs to satisfy Equation (2) and maximize profits.
+
+Let $D_i (t)$ be the expected demand for firm $i$ at time $t$.  Under the assumptions above, this translates into an employee target $\hat{e_i} (t) = D_i/\pi_i$, where $\pi_i$ is the average productivity per worker of firm $i$.  This means that the targeted change in number of employees for the firm is $D_i/\pi_i - e_i$.  For convenience, for the moment assume that $\pi_i$ is constant in time, and assume that the firm always expects to lose a fraction $s$ of its employees per unit time as a result of spontaneous separations, e.g. retirement.
+
+The dynamics of vacancies and unemployment can be written
+\begin{eqnarray}
+v_i (t) & = & \left[ D_i/\pi_i - e_i + e_i s/m \right]^+ \label{vacancy}\\
+\frac{de_i}{dt} & = & v_i m  - e_i s + \left[ D_i/\pi_i - e_i \right]^-\label{employmentchange},
+\end{eqnarray}
+where $[x]^+ = x$ if $x > 0$ and equals zero otherwise, and vice versa for $[x]^-$. 
+
+
+\textbf{Note from Jordan: in Eq. 2, the minus sign from in from of the third term needs to be plus, because the term in the bracket is always non-positive.}
+
+Assume that demand for each type of firm is given exogenously.  We expect that the sensitivity of the expected demand for the output of different firms to vary widely.  At one extreme there are firms for which it will be effectively constant, so that vacancies and the number of employees are constant, i.e.
+\begin{eqnarray}
+v_i (t) & = & e_i s/m\\
+\frac{de_i}{dt} & = & 0.
+\end{eqnarray}
+At the other extreme will be firms whose demand varies widely.  Note that previously we had a separate parameter for $v_0$; the equilibrium condition connects this to $s$, so that it is no longer needed.  Also note that we no longer have a separate differential equation for vacancies, which are now just a function of the gap between current employment and expected demand.
+
+In order to complete the model we need to compute the aggregate unemployment and vacancies, which are required as inputs for the matching function.  Letting $L$ be the size of the labor force, I believe this is:
+\begin{eqnarray}
+u  & = & 1 - e = 1 - \frac{\sum_{i=1}^N e_{i}}{L}\\
+v & = &  \frac{\sum_{i=1}^N v_{i}}{\sum_{i=1}^N v_{i} + \sum_{i=1}^N e_{i}}
+\end{eqnarray}
+I am not sure about how vacancies are normally defined -- Maria, is this correct?  Here for simplicity I will assume that vacancies are also defined relative to the size of the labor force, i.e.
+\begin{equation}
+v =  \frac{\sum_{i=1}^N v_{i}}{L}.
+\end{equation}
+To summarize, the model consists of a set of $N$ differential equations for the employment of each firm, which are weakly coupled through their common dependence on the matching function $m$.
+
+ In general the demand for each good might be unrelated, but we expect that they will all be influenced by a common factor, like GDP, so that their expected demands are cross sectionally correlated. Suppose, for example, that the demand for firm $i$ is 
+\begin{equation}
+D_i (t)/\pi_i = \sigma_i (1 + C_i G(t)),
+\end{equation}
+
+(if L is set to the maximum of D/pi, then the unemployment should go to zero around the time of maximum demand (G(t) is max). Sensibly, set L to be larger. When the economy is at the point of full output, what percent of the labor pool is employed? Sigma should be described relative to the population size)
+
+where $\sigma_i$ can be thought of as the "size" of the firm and $G(t)$ is a common signal about the state of the economy (which might or might not be related to GDP) that firm's use to evaluate expected demand  and $C_i$ is a coefficient that measures the sensitivity of the firm's demand to the state of the economy.  Since firm's only differ in their sizes and sensitivities, we could lump together all firms with similar sensitivity.
+
+We can do experiments to understand the properties of the model.  To do this we need to pick a set of firms together with their values of $S_i$ and $C_i$.  I suggest the following experiments:
+\begin{enumerate}
+\item
+Let $G(t)$ be a positive step function, corresponding to a positive signal about the state of the economy.  I think we should see a roughly exponential relaxation of the firms to their new higher levels of employment, and a corresponding drop in unemployment.  When the step function is bigger the relaxation will become slower because unemployment will be lower.  I say "roughly" because since $u$ will vary with time it will initially slow down as it proceeds.
+\item
+Let $G(t)$ be a negative step function, corresponding to a sufficiently negative signal about the state of the economy.  In this we should see the economy respond instantly -- the matching function won't matter.  This is because the number of workers can be adjusted by just firing them.
+\item
+Let $G(t)$ be a sine wave.  We should see a well-shaped Beveridge curve whose precise shape will depend on our choices of $\sigma_i$ and $C_i$.  We should be able to illustrate the phase shifting between vacancies and unemployment as we go around the cycle.
+\item
+Experiment with different assignments of $\sigma_i$ and $C_i$ to see how this affects the results.
+\item
+We can define an efficiency measure as the difference between the GDP the model would have if all firms had the workers they need and the GDP that is actually achieved (see remarks below for how GDP is defined in the model).  The model's economy will be fully efficient during downturns but inefficient in upturns, and the inefficiency will get worse as the matching function is smaller.  This will happen, for example, when unemployment is small.  It seems surprising to me that the economy becomes less efficient with small unemployment, and it will become completely inefficient if unemployment is zero.  This helps explain why unemployment has to be non-zero and is interesting in and of itself.  (I suppose this is already implicit in the usual DMP framework).
+\end{enumerate}
+
+A consequence of the behavioral assumption that firms prefer to reduce vacancies rather than fire workers causes highly nonlinear behavior.  These equations predict that vacancies will drop more than unemployment in small downturns but the reverse will be true in large downturns.  If vacancies are normally a small percentage, the constraint that they are non-negative limits the possible size of the reduction, whereas unemployment can theoretically go as high as $100\%$, i.e. the employment at a given firm can potentially go to zero.  This also suggests some memory effects:  If vacancies are reduced to zero in a given period, then they cannot be reduced anymore in the next period. For example, if there is a small downturn taking vacancies to zero in a given period, followed by a large downturn, vacancies will not respond at all to the large downturn.
+
+The above observation is potentially important as it may explain why our previous model worked so poorly for vacancies and suggests an improvement, which might be substantial.  Note that it is consistent with the behavior for COVID, where we see both unemployment spike strongly upward and vacancies downward, but the spike for vacancies is much smaller than that for unemployment.  I also think this could explain the skewness puzzle -- taking this properly into account should mean that we never see large downward spikes in vacancies -- in fact, during a boom vacancies might grow faster than they ever drop, so if anything we might expect positive skewness.
+
+Upturns are different because the only way firms can employ new workers is by issuing vacancies and hiring them.  In principle, if all workers are interchangeable, they might be able to post more vacancies than they need and then cancel them as soon as they hit their quota.  However, in general firms will have specific requirements for their workers, and don't want to risk hiring more workers than they need.  I think the most plausible assumption is that firms post vacancies for the workers they actually need and then wait as long as they have to in order to hire them, which is what we are assuming here.  This is a friction:  It means that during upturns firms are not maximizing profits and this is why unemployment doesn't track GDP perfectly.  Note that this makes the prediction that changes in unemployment during downturns should be more closely correlated to GDP than changes in unemployment during upturns.
+
+It will be important to take heterogeneity into account.  If there were only a single representative firm, and this firm is sensitive to changes in GDP, we would routinely see vacancies dropping to zero.  We don't see this in the aggregate data.  I believe that this is because some firms' outputs are insensitive to GDP.  We expect this for occupations like nurses, but even in a highly GDP sensitive industry like construction, there are always things being built and vacancies never go to zero because there is still demand for the outputs of some firms.  This can be dealt with by assigning different constants $C_i$ for different firms, where some of them are zero and some of them are large.
+
+Our model generates GDP endogenously.   I believe that GDP in this model is
+ \begin{equation}
+ g_t = \sum_{i=1}^N \pi_{it} e_{it},
+ \end{equation}
+ where $\pi_{it}$ is the average productivity per worker at firm $i$ at time $t$.  If we assume that the productivity of firms doesn't depend on time.  This means that the change in GDP must correspond to a change in the number of employed workers.  When we apply this to data, if we use a function of GDP as our signal for expected demand, we can compare this to the GDP that the model is generating.  We were previously finding that lagged changes in GDP provided the best signal.  This suggests that the economy is in some sense trend-following with itself.  If we run the model endogenously using its self-generated GDP signal, then we may see unstable behavior as a result of its backward-looking expectation formation.  This would be interesting in and of itself.
+ 
+ One change from our earlier model is that we are now using the level of $D(t)$ rather than its derivative as the signal.  This is an important change, as it makes the model more stable.  This is important because it deals with path dependence properly and stabilizes the model.  For example, consider a situation where demand rises over several consequent periods of time.  In this case, due to the lag between posting vacancies and filling them, the gap between expected demand and current employment accumulates.  This doesn't happen in our old model where everything depended on the rate of change of the GDP signal at a given point in time.  Except for possible stochastic behavior of the signal $G(t)$, the equations above are deterministic (as they were in our previous model).  If we add noise to the employment dynamics, I believe our old model is at best neutrally stable.  Whereas here because the dynamics depend on the cumulative gap between the {\it level} of expected demand and current employment, the results should be much more stable.
+
+In the case where there are only two firms we can derive an aggregate equation. Assume one firm's demand is constant while the other's is sensitive to the state of the economy, so that their demands are 
+
+\begin{eqnarray}
+D_1 (t)/\pi_1 & = & \sigma_1,\\
+D_2 (t)/\pi_2 & = & \sigma_2 (1 + C G(t)).
+\end{eqnarray}
+
+For the first firm $e_1 = \sigma_1$ and $v_1 = \sigma_1 s/m$, and for the second firm
+\begin{eqnarray}
+v_2 (t) & = & \left[ \sigma_2 (1 + C G(t)) - e_2 + e_2 s/m \right]^+ \\
+\frac{de_2}{dt} & = & v_2 m(u,v)  - e_2 s - \left[ \sigma_2 (1 + C G(t)) - e_2 \right]^-.
+\end{eqnarray}
+So far we have been working with extensive variables.  To put things in intensive form, divide $v_i$ and $e_i$ by $L$, so that they are compatible with $u$ and $v$.
+Putting this together, aggregate vacancies $v$ and unemployment $u$ are
+\begin{eqnarray}
+v & = & v_1 + v_2 (t) = \sigma_1 s/m + \left[ \sigma_2 (1 + C G(t)) - e_2 + e_2 s/m \right]^+ \\
+\frac{du}{dt} & = & 1 - \frac{de_1}{dt} - \frac{de_2}{dt}  =  1 - v_2 m(u,v)  + e_2 s + \left[ \sigma_2 (1 + C S(t)) - e_2 \right]^-.
+\end{eqnarray}
+Letting $v_2 = v - v_1 = v - \sigma_1 s/m$ and $e_2 = e - e_1 = e - \sigma_1 = 1 - u - \sigma_1$, substituting and simplifying, this becomes
+\begin{eqnarray}
+v & = & \sigma_1 s/m + \left[ \sigma_2 (1 + C G(t)) -(1- s)(1-u) +\sigma_1(1 - s/m) \right]^+ \\
+\frac{du}{dt} & = &  1 - v m(u,v)  - s(1 - u) - \left[ \sigma_2 (1 + C G(t)) - (1- u) + \sigma_1 \right]^-.
+\end{eqnarray}
+The response of vacancies to changes in $G(t)$ is piecewise linear.  For small drops in $G$ there will be a linear response, but for larger changes where is a floor below which vacancies can never fall, corresponding to the fact that jobs are available as always in industry 1 but there are no jobs at all in industry 2.   When $G$ increases, in contrast, vacancies always respond linearly.  This is obviously unrealistic but it may be useful.  This model has the big advantage that we can use it by fitting parameters on aggregate data as we did before.  There are five parameters:  $\sigma_1$, $\sigma_2$, $C$, $s$ and $K$ (the parameter for the matching function).  However, I think all the matters is the relative size, so we may be able to get rid of one of the $\sigma$ parameters.  It would be useful to make some plots showing $v$ and $du/dt$ as a function of $G$ for different values of the parameters.  
+
+We can also use the model with $N$ industries, where $N$ is large.  This could be done by using disaggregated data to measure the response of unemployment and vacancies to GDP (assuming we use it as our signal) for different industries spanning the economy.  If industry data is unavailable, we could also use occupational data, since at the end of the day we just need to know how many jobs are affected by changes in GDP.  We could then just run the whole model.  One challenge will be that we will not have fully disaggregated data, and even in industries like construction there is still a substantial amount of activity even in the deepest depressions.  Perhaps we can find data on this? In the limit as $N \to \infty$, we can write equations (1) and (2) as a partial differential equation with independent variables $x$ and $t$, where $x$ replaces $i$ in the finite $N$ case, and $C_i$ is replaced by $C(x)$, which is now a density function stating how many firms are in a given interval $\Delta x$.   Because the only coupling is due to the matching function, the coupling between different values of $x$ is very weak, and there is a built in discontinuity; it will be a bit of a strange partial differential equation, but perhaps worth writing down (the economists will like that).
+
+One of the essential changes that I have made from the earlier versions is that target employment is a level, so we want a signal that is a level, whereas in our previous model we used the rate of change of GDP.  I am hopeful that detrended GDP will provide a good signal but we will need to experiment -- note that $G$ does not necessarily need to correspond to GDP, but my expectation is that as before we will find that the current GDP rather than future GDP will provide the best signal. I have defined the equation relating the expected demand to the signal in equation (8) so that each firm $i$ has a reference level $\sigma_i$ for its expected demand. I am not sure this is the best way to do this; for example we might be able to use the raw GDP as the signal, without detrending it if we define $\sigma_i$ in the right way.  Note that if we do use current GDP as the signal, equation (4) indicates that there is an inherent inconsistency.  This is because the GDP of the model will not match the GDP of the data -- if it did no one would want to hire or fire any employees.  I think this is okay but worth thinking about some more.
+
+One thing I like about this model is that there is only one parameter, $K$, which can only be determined by fitting the model to the target data.  The other parameters can all potentially be determined a priori.  Doing this would provide a very strong test of the model.
+
+Here is a suggested research plan:
+\begin{itemize}
+\item
+You guys need to read this carefully, check my algebra, and make sure this all makes sense to you.
+\item
+Fit the two firm model to the aggregate data.
+\item
+Acquire disaggregated data and use it to estimate $C_i$.
+\item
+Fit the $N$ dimensional model to the data. 
+\item
+Perform the tasks described in the earlier numbered list to better understand the model.
+\end{itemize}
+
+\section{Preparing for 1-firm model}
+
+Consider an aggregate equilibrium industry size size $\sigma$ and firm share $k$.
+The size of firm $i$ is given by $\sigma_i=k_i\sigma$
+If firm weight $k_i=1$ for all firms, then firms are uniform in size. We could also assign 
+\begin{equation}
+    k_i=2i/(N+1)
+\end{equation} for an ascending firm size or impose a power law firm size relationship such that $k_i=i^{-a}A$ where $a$ with normalization $A$. Generally, by constraining $k_i$ such that $\sum_ik_i=N$, we guarantee that $\sum_i\sigma_i=\sigma$.
+ 
+Using the aggregate firm size and information about the data, we can constrain the population size.
+This esnures that as employment maximizes given the signal, unemployment rate converges to some value $\xi$.
+This method will be helpful for constraining the model in terms of extrema in the data.
+Assuming $t_\textrm{max}$ is the timestep where demand is maximum, the population would look something like 
+\begin{equation}
+L=\Big[\sum_{i=1}^N[D_i(t_{\textrm{max}})/\pi_i\Big](1+\xi)
+\end{equation}
+For a single firm, this is $L=\sigma(1+CG_\textrm{max})(1+\xi)$.
+
+\section{1 firm equilibrium}
+
+Recalling the equations:
+\begin{eqnarray}
+v_i (t) & = & \left[ D_i/\pi_i - e_i + e_i s/m \right]^+ \label{vacancy}\\
+\frac{de_i}{dt} & = & v_i m  - e_i s + \left[ D_i/\pi_i - e_i \right]^-\label{employmentchange},
+\end{eqnarray}
+Assuming a time-independent signal at zero vacancies, the change in employment becomes
+\begin{equation}
+    0=[\sigma(1+CG_0)(1+\xi)-e(1+s/m)]^+
+\end{equation}
+It follows that vacancies are only posted when 
+\begin{equation}
+CG_0>\frac{e(1+s/m)}{\sigma (1+\xi)}-1
+\end{equation}
+When $G_0=0$, vacancies will still be posted when 
+\begin{equation}
+    \frac e\sigma>\frac{(1+\xi)}{1+s/m}.
+\end{equation}
+If we assume no surplus of labor, or $\xi=0$, vacancies are not posted as $s\rightarrow 0$, or when separations are negligible relative to the matching rate. A larger surplus also counteracts the separation rate.
+
+The equilibrium employment level, or whe $de/dt=0$ under two conditions. The first condition, when the target firm size is the current firm size and the third term is zero, the equilibrium firm size is $e=vm/s$, or
+\begin{equation}
+    e=v\frac{e}{\sigma(1+\xi)-e}.
+\end{equation}
+We can plug this term into the definition of the matching rate, $m=Ku$ to get an equilibrium matching rate
+\begin{equation}
+    K_{eq}=es/vu
+\end{equation}
+
+\subsubsection{Unemployment limit}
+In practicality, $u_{t_\textrm{max}}\equiv u_\textrm{min}=\xi/(1+\xi)>\xi$ . 
+This follows from the definition, $u(t)=1-\big[\sum_ie_\textrm{i}(t)\big]/L$. 
+Consider the. variable $\alpha=e_\textrm{actual}/e_\textrm{targ}$ where $e=\sum_ie_i$.  
+It follows that $u(t)=1-\alpha e_\textrm{targ}/L$  and therefore via definition of $L$,   $u(t)=1-\alpha/(1+\xi)$ 
+When $\alpha<1$, it is likely that hiring frictions prevent the firms from fully realizing their targets.  Plugging in the definition of target employment, we get $u=1-1/(1+\xi)$ 
+
+\subsection{Limits at zero vacancies}
+
+Vacancies will only go to zero if $d<e(1-s/m)$, where $d=D/\pi$. Put in another way, $d/e+s/m<1$. So when $d\ll e$, as is the case for extreme demand shocks, the convergence in vacancies depend on $s/m$. A naive option is to force m to be large. In the limit of low unemployment, this requires that $K$, the matching rate be large. Doing so creates numerical instability in the model. During deployment on real data, we'll have to see what parameter ranges we retrieve from the data. 
+
+\subsection{Time-continuous shock}
+Starting from our definition of $\dot e$, we can define a growth rate in $e$ as $\gamma_e=\dot e/e$. 
+$ \gamma_e = \frac{v m}{e} - s + [D/(\pi e) - 1]^- $
+If we have a decline in demand large enough such that the target employment is less than current employment ($D/(\pi e) < 1$), the term in the brackets becomes active (negative). Also, assuming the demand shock is severe enough that the firm stops hiring ($v=0$), the vacancy term vanishes. We can then rearrange the equation:
+$ \gamma_e = -s + \left( \frac{D}{\pi e} - 1 \right) $
+We define the Demand Ratio () as the ratio of target employment (implied by demand) to current employment, $R_D=D/(\pi e)$. Rearranging for the demand term:
+$ R_D = 1 + s + \gamma_e $
+Interpretation: This equation links an external Demand Shock ($R_D$) directly to an internal Employment Shock ($\gamma_e$), where $1+s$ gives a baseline stability. For example, with a separation rate $s=0.05$, if we want to observe an instantaneous contraction of 10% ($\gamma_e = -0.10$), the demand ratio must be $R_D = 1 + 0.05 - 0.10 = 0.95$. This implies that target demand only needs to drop to 95% of current employment to trigger a 10% instantaneous firing event. This reveals the model's extreme sensitivity to "instant firing" dynamics.
+\subsection{Experimental Verification}
+
+To test this, we implemented a gdp shock experiment starting from a stable, maximal employment level (peak economy). The Demand Ratio can be described empirically from the two signal levels via the firm's sensitivity coefficient $C$ (where $D/\pi=\sigma(1+CG)$):
+$ R_D = \frac{1 + C G_\text{shock}}{1 + C G_\text{peak}} $
+Combining our two definitions of $R_D$, we define the signal drop causing employment shock $\gamma_e$
+$ G_\text{shock} = \frac{(1 + s + \gamma_e)(1 + C G_\text{peak}) - 1}{C} $
+In the discrete picture, the total employment change $\Delta e$ consists of two components:
+$\Delta e = \underbrace{-e \cdot s \cdot dt}_{\text{separations}} + \underbrace{\sigma(1 + C \cdot G_{\text{drop}}) - e}_{\text{firing}}$
+This gives us both a discrete and continuous growth rate definition
+$R_D = 1 + s + \gamma_e^{\text{inst}}; \hspace{.25cm} \gamma_e^{\text{discrete}} = \frac{\Delta e}{e \cdot dt}$
+The discrete-time rate includes the separation effect during the timestep:
+$\gamma_e^{\text{discrete}} = \frac{\sigma(1 + C G_\text{shock}) - e}{e \cdot dt} - s$
+If we substitute $R_D = \frac{1 + C G_\text{shock}}{1 + C G_\text{peak}}$ and use the relationship $e \approx \sigma(1 + C G_\text{peak})$ at the peak, we get:
+
+\begin{equation}\gamma_e^{\text{discrete}} \approx \frac{R_D - 1}{dt} - s = \frac{\gamma_e^{\text{inst}} + s}{dt} - s \rightarrow \boxed{\gamma_e^\textrm{discrete}dt+sdt\approx\gamma_e^\textrm{inst}+s}\end{equation}
+
+Put in an empirically useful way
+$\gamma_e^{\text{discrete}} \approx  \frac{\gamma_e^{\text{inst}}}{dt} + s\left(\frac{1}{dt} - 1\right)$
+For small $dt$, this approaches $\frac{\gamma_e^{\text{inst}}}{dt}$, which is why we see -95.5% (approximately -10% / 0.1) instead of -10%.
+
+ \subsection{
+Observations from Data}
+
+We ran a simulation with parameters $s=0.005$, $C=0.25$, and a target contraction of 10% ($\gamma_e \approx -0.10$ effectively, meaning a 10% drop in a single step).
+Calculated Shock: The signal dropped from $G=100$ to $G \approx 90.12$.
+
+Observed Result:
+At $t=1000$, demand dropped, Vacancies hit exactly 0.00. Employment dropped from 260.00 to 235.17 in a single timestep ($dt=0.1$). This is a drop of 9.55%, matching our 10% target almost perfectly. The calculated growth rate was -95.5%, confirming the violent, instantaneous nature of the adjustment.
+%The constant $C$ is just the constant of proportionality between expected demand and employees.  Thus if this firm really were the whole economy and we use $GPD$ as a proxy for demand, then $C$ would be ratio of GDP to the size of the workforce, so we could estimate it from first principles.
+
+%If $\Delta D > 0$ then $\Delta e^f = 0$.  Furthermore, we can change notation to write things in terms of $u$ rather than $e$, so the equation becomes
+%
+%If $\Delta D_t \ge 0$:
+%\begin{equation}
+%\Delta u_t = - v_t m(u_t, v_t) \Delta t = C \Delta D_t.
+%\end{equation}
+%
+%If $\Delta D_t < 0$:
+%\begin{equation}
+%\Delta u_t = \Delta e^f_t - v_t m(u_t, v_t) \Delta t = C \Delta D_t.
+%\end{equation}
+%
+%We can write a similar equation for vacancies, i.e.
+%\begin{equation}
+%\Delta v_t = v_{t+1} - v_t = \Delta v^f_t - v_t m(u_t, v_t) \Delta t,
+%\end{equation}
+%where $\Delta v^f_t$ is the change in the number of vacancies the firm offers between time $t$ and $t+1$.  Thus this equation says that the change in the number of vacancies is the change in how many vacancies the firm offers minus the number that are filled between $t$ and $t+1$.
+%
+%Note that here the matching function $m(u, v)$ is a pure number, like a probability, that determines the rate.  This is why the $v_t$ is there, to take into account that the number of hires by the firm should be proportional to the number of vacancies posted, but the success rate may change with time.
+%
+%\begin{eqnarray}
+%u_t &=& 1 - e_t = 1 - \sum_f w^f e^f_t\\
+%v_t & = & \sum_f w^f v^f_t,
+%\end{eqnarray}
+%where $w^f$ is the weight of firm $f$ in the economy (and is proportional to its production, which is proportional to the number of employees).
+%
+%To make things a little more realistic, let's assume that we have two firms in the economy, and the demand for the other firm's good is always the same.  In that case $\Delta D^f = 0$, where $f$ is now an index indicating the firm.  This means that this firm would have no    
+ 
+\bibliographystyle{plainnat}
+\bibliography{jdf} 
+
+\end{document}
+
+
+
+

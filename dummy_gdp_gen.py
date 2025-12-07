@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 def simulate_gdp(
     T=20.0,              # total (normalized) time
     N=500,              # number of steps
-    S0=100.0,           # initial GDP level (index)
+    S0=200.0,           # initial GDP level (index)
     mu_pos=0.03,        # positive drift (before t1 and after t2)
     mu_neg=-0.12,       # negative drift (recession window)
     sigma=0.02,         # volatility
@@ -45,24 +45,30 @@ def simulate_gdp(
     return t, S, t1, t2
 
 def main():
-    # --- simulate ---
-    t, S, t1, t2 = simulate_gdp()
+    # --- parameters for constant signal ---
+    steps = 20
+    gdp_value = 200.0
+
+    # --- generate data ---
+    t = np.arange(steps)
+    S = np.full(steps, gdp_value)
+    b = np.concatenate((np.linspace(0,1E-3,int(steps/2)),np.linspace(1E-3,0,int(steps/2))))
+    S-=b
 
     # --- save ---
     df = pd.DataFrame({"time": t, "gdp": S})
     df.to_pickle("dummy_gdp.pkl")
-    print("Saved GDP series to dummy_demand.pkl")
-    print(df.head())
+    print("Saved constant 10-step GDP series to dummy_gdp.pkl")
+    print(df)
 
     # --- quick plot ---
     plt.figure()
-    plt.plot(t, S, label="Simulated GDP (GBM, piecewise drift)")
-    plt.axvline(t1, linestyle="--", label="drop start (t=1/3)")
-    plt.axvline(t2, linestyle="--", label="recovery start (t=2/5)")
-    plt.title("Stochastic GDP with Recession Window")
-    plt.xlabel("Time (normalized)")
+    plt.plot(t, S, 'o-', label=f"Constant GDP ({gdp_value})")
+    plt.title("Constant GDP Signal")
+    plt.xlabel("Time (steps)")
     plt.ylabel("GDP (index)")
     plt.legend()
+    plt.grid(True)
     plt.tight_layout()
     plt.savefig('dummy_gdp.png')
 
