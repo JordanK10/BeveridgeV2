@@ -1,0 +1,51 @@
+### Question 2: What defines a shock?
+Starting from our definition of $\dot e$, we can define a growth rate in $e$ as $\gamma_e=\dot e/e$. The growth rate is defined
+$\gamma_e=vm/e-s+[D/(\pi e)-1]^-$. 
+If we had a decline in demand large enough such that $D/(\pi e)<1$, we satisfy the brackets. Aslo, assume that the demand shock is so large that there are no vacancies. We can rearrange in terms of the demand. 
+$D=\pi e(1+\gamma_e+s)$
+Define the demand ratio, which is $R_D=D/(\pi e)$, or the ratio of demand to the efficiency of the current labor pool, $\pi e$
+$R_D=1+s+\gamma_e$
+This is very informative. We can define here the relationship between a demand shock and an employment shock via $\gamma_e$. For example, with a separation rate of $.05$, and a demand shock that decreases demand to $.8$, then $\gamma_e$ makes up the difference as $\gamma_e=-.25$.
+As a demonstration, let's implement a shock from a stable maximal employment level of productivity. Assume some $G_\textrm{peak}$, at which unemployment is minimized and $G_\textrm{shock}$ where. The demand ratio os given by
+$R_D=\frac{1+CG_\textrm{peak}}{1+CG_\textrm{shock}}$ 
+To determine the size of a shock that would result in a precise change to unemployment, we plug in $R_D=1+s+\gamma_e$, and solve for $G_\textrm{shock}$. This gives us
+$G_\textrm{shock}=\frac{(1+s+\gamma_e)(1+CG_\textrm{peak})-1}{C}$
+
+
+\section{Introduction}
+
+In our previous work we derived the equations for the vacancies and employment for a single firm to minimize its costs, i.e.
+\begin{eqnarray}
+v_i (t) & = & \left[ D_i/\pi_i - e_i + e_i s/m \right]^+ \\
+\frac{de_i}{dt} & = & v_i m  - e_i s - \left[ D_i/\pi_i - e_i \right]^-.
+\end{eqnarray}
+This assumes that the firm desires to match the number of employees to that needed to meet demand, i.e. $\hat{e_i} (t) = D_i/\pi_i$.  However, I just realized that the solution give above neglects the opportunity cost that the firm faces if it has too few employees to meet demand. 
+
+To see this, let's back up and write down a simple expression for the firm's profit, i.e. the firm's revenue minus its costs.  Assume as before that the production function of the firm is linear w.r.t. labor, i.e. proportional to the number of employees.  When the firm has sufficient employees to meet demand, then the firm's revenue is $D_i$, the demand for the firm's good in dollars.  But if the firm has insufficient employees to satisfy demand, the firm's revenue is $\pi_i e_i$, i.e. the productivity per worker times the number of employees.  If all workers make the same wage $w_i$, the firm's cost is just $w_i e_i$.  There may be others costs as well, but to keep the notation simple let's assume for now that they are included in $w_i$ and that there are no other costs, i.e. let's assume that the costs are proportional to the number of workers with proportionality constant $w_i$.
+
+The profit $\Pi_i$ of the firm is the revenue minus the cost, or
+\begin{equation}
+    \Pi_i = min (D_i, \pi_i e_i) - w_i e_i.
+\end{equation}
+The firm's objective is to maximize its profit.  Equivalently, this can be written in terms of the employment inefficiency $E_i$ caused by having the wrong number of employees, i.e. the firm wants to minimize 
+\begin{equation}
+    E_i = [D_i - \pi_i e_i]^+ + [w_i(e_i - \frac{D_i}{\pi_i})]^+.
+\end{equation}
+The first term corresponds to the firm's opportunity cost (lost profits) due to having an insufficient number of workers and the second term corresponds to the additional cost the firm pays due to having too many workers.  The terms never bind at the same time, i.e. when the firm has too few workers the first term is nonzero and the second term is zero and when the firm has too many workers the second term is nonzero and the first term is zero.  Previously we were only taking into account the additional cost the firm pays due to having too many workers.
+
+How does the opportunity cost change the firm's strategy for hiring and firing?  Let's rewrite the first two equations above as
+\begin{eqnarray}
+v_i (t) & = & \left[ D_i/\pi_i - e_i + e_i s/m \right]^+_{\theta} \\
+\Delta e_i & = & v_i m  - e_i s - \left[ D_i/\pi_i - e_i \right]^-_\theta,
+\end{eqnarray}
+where $\theta \le 0$ is the threshold where the company begins firing workers, and the bracket function is defined analogously to before, i.e. it is equal to its argument when it is greater than $\theta$ and zero otherwise.  (Note that I have also written this as a discrete time equation, so that $\Delta e_i$ is the number of workers company $i$ fires in a given period, e.g. in a month.)  Previously we had $\theta = 0$.  Here we allow for the possibility that $\theta < 0$.   This allows for the possibility that the firm might want to keep more workers to avoid the opportunity cost it would suffer if demand increases in the future.  This would be true, for example, if the demand process (e.g. as proxied by GDP) is mean-reverting (for example an AR process).  The firm's logic would be "I am paying more workers than I need right now, but I think demand is going to increase, so better to pay extra cost now than not have enough workers when I need them in the future".
+
+If we have a random process for demand, then we can numerically estimate the optimal value of $\theta$ by simulating the process and searching for the value of $\theta$ that maximizes the average profit (or alternatively, that minimizes the employment inefficiency).  As it stands, $\theta$ has units of number of employees.  Since each firm has a different size, it is probably useful to write this in scale free terms as $\theta = \alpha D_i/\pi_i$ and search for $\alpha$, which can be thought of as the ratio of the number of excess employees to the ideal number of employees, i.e. the ratio of excess employees to the demand.
+
+The relative importance of the opportunity cost and the excess worker cost will depend on the firm's profit margin.  To take an extreme case, suppose the cost per worker $w$ is very low, whereas the extra revenue from increasing output is high.  In this case the firm would want to retain lots of extra workers in order to make sure it can always produce enough to satisfy all the demand.  This suggests that if the profit margin is zero, the terms are equally important and if the profit margin is greater than zero, the opportunity cost is more important than the extra labor cost.  However,  the opportunity cost is only paid if the demand rises again, whereas the extra labor cost is paid no matter what.  In other words, when making its decision, the firm needs to estimate the expected opportunity cost -- if the demand is unlikely to tick up, this would make the expected opportunity cost lower.  This suggests that in general the extra labor cost is more important than the opportunity cost as long as the profit margin is not high.  Nonetheless, the fact that this depends on the profit margin indicates that if the firms are heterogeneous then the optimal value of $\alpha$ may not be universal.  (Still, for now I think we should assume a universal $\alpha$).
+
+I expect that the opportunity cost and the extra labor cost will behave like this:  As we enter a recession, the extra labor cost will increase as demand drops.  In contrast, during a recovery the opportunity cost will dominate.
+
+I think we may also want to consider a behavioral modification.  With the formulas above, the firm will always retain a buffer of workers (which will depend on $\alpha$).  I think in reality most firms will tolerate a surplus of workers up to a point, and then if the downturn becomes too severe, they have a layoff.  When they do this they will fire enough workers to become efficient again, i.e. to make $e_i = D_i/\pi_i$ at that moment.  This is reminiscent of what is called sticky wages in macromodels, where firms tolerate inefficiencies by only changing wages intermittently.  Instead here we have a sticky workforce.  I think this is behaviorally more accurate, even if it is less efficient in the sense that it lowers profits.  From a psychological view this makes more sense:  Firing workers is traumatic, and a firm will want to minimize how often it does it in order to maintain employee morale.
+
+If the firm's hiring and firing strategy is in the form of equations (5) and (6), for a given assumption about the demand process we can derive $\alpha$ to maximize profits.  However, it is not obvious to me that equations (5) and (6) describe the optimal strategy, even if $\alpha$ is optimized.  Worth thinking about a little ... but in any case I think this should provide a good starting point.
