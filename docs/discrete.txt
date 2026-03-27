@@ -1,0 +1,669 @@
+%\documentclass[aps,superscriptaddress,twocolumn,nofootinbib,12pt,tightenlines]{revtex4}
+\documentclass[aps,superscriptaddress,nofootinbib,12pt,tightenlines]{revtex4}
+
+\makeatletter
+
+\usepackage{natbib}
+\usepackage{dcolumn}
+\usepackage{graphicx}
+\usepackage{amsmath}
+%\usepackage[hang,small,bf,centerlast]{caption} 
+%\setlength{\captionmargin}{20pt}
+% \textwidth = 6.5 in
+%\textheight = 9 in
+%\oddsidemargin = 0.0 in
+%\evensidemargin = 0.0 in
+%\topmargin = 0.0 in
+%\headheight = 0.0 in
+%\headsep = 0.0 in
+%\parskip = 0.2in
+
+\title{Beveridge with opportunity cost}
+\author{Doyne Farmer }
+\date{November 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+   In previous work we derived the strategy that would maximize returns by minimizing costs.  However, I have now realized that I left out an important term, namely the opportunity cost of not having enough workers to satisfy demand.  I add this term to the objective function, which makes the problem more complicated but more interesting. 
+\end{abstract}
+
+
+\section{Introduction}
+
+A firm is characterized by its number of employees $e_i$, and the average productivity per employee, $\pi_i$. The productivity of the firm is given by the product of these two quantities, $p_i=e_i\pi_i$.
+Assume as before that the production function of the firm is linear w.r.t. labor, i.e. proportional to the number of employees.
+The firm must pay a cost to employees in the form of average wages $w_i$, such that the total cost is $c_i=w_ie_i$.
+There may be others costs as well, but to keep the notation simple let's assume for now that they are included in $w_i$ and that there are no other costs, i.e. let's assume that the costs are proportional to the number of workers with proportionality constant $w_i$.
+Now, consider that the firm satisfies demand $D_i$ through its labor. 
+When demand is greater (less) than the productivity given the existing labor pool, revenues are limited by labor (demand).
+The revenue is then defined $r_i=min(D_i,p_i)$.
+In terms of the model parameters $\pi_i,w_i$, firm state $e_i$, and market state $D_i$, the profit $\Pi_i$ of the firm is then defined 
+\begin{eqnarray}
+    &p_i=e_i\pi_i,\hspace{.25cm}c_i=w_ie_i,\\
+    &r_i=min(D_i,p_i),\\
+    &\Pi_i=r_i-c_i.
+\end{eqnarray}
+The firm's objective is to maximize its profit, which is accomplished by adjusting employment levels such that productivity meets demand and $D_i=p_i$.  
+Equivalently, this can be written in terms of the employment inefficiency $E_i$ caused by having the wrong number of employees.
+
+To illustrate these cases, consider the demand mismatch $d_i=D_i-p_i$. 
+In a labor-limited case, $d_i>0$, the firm pays an opportunity cost, given by unrealized profits due to a lack of labor, $c_p=[D_i-p_i]^+=[d_i]^+$.
+Here, the positive superscript indicates that this cost is nonzero only when $d_i>0$, and demand outpaces labor supply.
+In the market-limited case, $d_i<0$,, the firm loses profits from paying a bloated workforce, $c_D=w_i(e_i-D_i)$. 
+%This can be rearranged in terms of $c_p$ by introducing the wage share, $\alph-i=w_i/\pi_i$, which measures the fraction of overall productivity captured by wages (as opposed to capital). 
+It follows that $c_D=[d_i]^-$, where the superscript indicates that this term is nonzero when $d_i<0$. 
+We can now write out the definition of costs due to labor inefficiency as 
+\begin{eqnarray}
+c_p&=[d_i]^+\\
+ %\alph-i&=w_i/\pi_i\\
+c_D&=[d_i]^-\\
+C_i&=d_i.
+\end{eqnarray}
+The first term corresponds to the firm's opportunity cost (lost profits) due to having an insufficient number of workers and the second term corresponds to the additional cost the firm pays due to having too many workers.  The terms never bind at the same time, i.e. when the firm has too few workers the first term is nonzero and the second term is zero and when the firm has too many workers the second term is nonzero and the first term is zero.  Previously we were only taking into account the additional cost the firm pays due to having too many workers.
+
+
+How does the opportunity cost change the firm's strategy for hiring and firing? Consider that the firm sets a target employment level from the demand, $\hat e_i=D_i/\pi_i$.
+In the simulation code, productivity is typically normalized to $\pi_i=1$; target employment is then implemented as $\hat e_i(t)=\sigma_i(1+C_i G(t)+\eta_i(t))$ with optional idiosyncratic AR(1) shocks $\eta_i$ (Section~\ref{sec:idio}), the same algebraic role as $D_i/\pi_i$ after folding productivity into the scale~$\sigma_i$.
+The firm then minimizes $d_i$ by minimizing the difference $d_i/\pi_i=\hat e-e$.
+The firm does so by posting vacancies when underemployed, and firing when over-employed.
+\begin{eqnarray}
+v_i (t) & = & \left[ d_i/\pi_i+ e_i s/m \right]^+_{\theta} \\
+\Delta e_i & = & v_i m  - e_i s - \left[d_i/\pi_i\right]^-_\theta,
+\end{eqnarray}
+where $\theta \le 0$ is the threshold where the company begins firing workers, and the bracket function is defined analogously to before, i.e. it is equal to its argument when it is greater than $\theta$ and zero otherwise.  (Note that I have also written this as a discrete time equation, so that $\Delta e_i$ is the number of workers company $i$ fires in a given period, e.g. in a month.)  Previously we had $\theta = 0$.  Here we allow for the possibility that $\theta < 0$.   This allows for the possibility that the firm might want to keep more workers to avoid the opportunity cost it would suffer if demand increases in the future.  This would be true, for example, if the demand process (e.g. as proxied by GDP) is mean-reverting (for example an AR process).  The firm's logic would be "I am paying more workers than I need right now, but I think demand is going to increase, so better to pay extra cost now than not have enough workers when I need them in the future".
+
+\textbf{Implementation.} The numerical model uses the firing threshold $\theta = 0$ for the firing branch: whenever $e_i > \hat e_i$, employment is reduced to target within the time step (instantaneous firing to match demand). The $[\cdot]_\theta$ formalism above is kept as a behavioral extension not implemented in the current codebase.
+
+If we have a random process for demand, then we can numerically estimate the optimal value of $\theta$ by simulating the process and searching for the value of $\theta$ that maximizes the average profit (or alternatively, that minimizes the employment inefficiency).  As it stands, $\theta$ has units of number of employees.  Since each firm has a different size, it is probably useful to write this in scale free terms as $\theta = \alpha D_i/\pi_i$ and search for $\alpha$, which can be thought of as the ratio of the number of excess employees to the ideal number of employees, i.e. the ratio of excess employees to the demand.
+
+The relative importance of the opportunity cost and the excess worker cost will depend on the firm's profit margin.  To take an extreme case, suppose the cost per worker $w$ is very low, whereas the extra revenue from increasing output is high.  In this case the firm would want to retain lots of extra workers in order to make sure it can always produce enough to satisfy all the demand.  This suggests that if the profit margin is zero, the terms are equally important and if the profit margin is greater than zero, the opportunity cost is more important than the extra labor cost.  However,  the opportunity cost is only paid if the demand rises again, whereas the extra labor cost is paid no matter what.  In other words, when making its decision, the firm needs to estimate the expected opportunity cost -- if the demand is unlikely to tick up, this would make the expected opportunity cost lower.  This suggests that in general the extra labor cost is more important than the opportunity cost as long as the profit margin is not high.  Nonetheless, the fact that this depends on the profit margin indicates that if the firms are heterogeneous then the optimal value of $\alpha$ may not be universal.  (Still, for now I think we should assume a universal $\alpha$).
+
+I expect that the opportunity cost and the extra labor cost will behave like this:  As we enter a recession, the extra labor cost will increase as demand drops.  In contrast, during a recovery the opportunity cost will dominate.
+
+I think we may also want to consider a behavioral modification.  With the formulas above, the firm will always retain a buffer of workers (which will depend on $\alpha$).  I think in reality most firms will tolerate a surplus of workers up to a point, and then if the downturn becomes too severe, they have a layoff.  When they do this they will fire enough workers to become efficient again, i.e. to make $e_i = D_i/\pi_i$ at that moment.  This is reminiscent of what is called sticky wages in macromodels, where firms tolerate inefficiencies by only changing wages intermittently.  Instead here we have a sticky workforce.  I think this is behaviorally more accurate, even if it is less efficient in the sense that it lowers profits.  From a psychological view this makes more sense:  Firing workers is traumatic, and a firm will want to minimize how often it does it in order to maintain employee morale.
+
+If the firm's hiring and firing strategy is in the form of equations (5) and (6), for a given assumption about the demand process we can derive $\alpha$ to maximize profits.  However, it is not obvious to me that equations (5) and (6) describe the optimal strategy, even if $\alpha$ is optimized.  Worth thinking about a little ... but in any case I think this should provide a good starting point.
+
+
+\section{Single-firm configuration}
+\subsection*{Derivation of $\gamma_D$ in terms of $\gamma_G$ and its relation to $\gamma_e$}
+
+We start with the demand equation for firm $i$ (simplified by dropping the index $i$ for clarity, and assuming constant $\pi$ and $\sigma$):
+\begin{equation}
+D(t) = \pi \sigma (1 + C G(t)) \label{eq:demand}
+\end{equation}
+where $D(t)$ is demand, $\pi$ is productivity, $\sigma$ is firm size, $C$ is sensitivity, and $G(t)$ is the economic signal.
+
+To find the growth rate of demand, $\gamma_D = \frac{1}{D}\frac{dD}{dt}$, we first take the natural logarithm of both sides of Equation \ref{eq:demand}:
+\begin{equation}
+\ln(D(t)) = \ln(\pi \sigma) + \ln(1 + C G(t))
+\end{equation}
+
+Now, we differentiate with respect to time $t$:
+\begin{align*}
+\frac{d}{dt} [\ln(D(t))] &= \frac{d}{dt} [\ln(\pi \sigma)] + \frac{d}{dt} [\ln(1 + C G(t))] \\
+\frac{1}{D}\frac{dD}{dt} &= 0 + \frac{1}{1 + C G(t)} \cdot C \frac{dG}{dt} \\
+\gamma_D &= \frac{C}{1 + C G(t)} \frac{dG}{dt}
+\end{align*}
+
+We also define the growth rate of the signal as $\gamma_G = \frac{1}{G}\frac{dG}{dt}$, which implies $\frac{dG}{dt} = G \gamma_G$. Substituting this into the expression for $\gamma_D$:
+\begin{equation}
+\boxed{\gamma_D = \frac{C G(t)}{1 + C G(t)} \gamma_G} \label{eq:gammaD}
+\end{equation}
+This equation shows that the growth rate of demand ($\gamma_D$) is proportional to the growth rate of the signal ($\gamma_G$), with a proportionality factor that depends on the current level of the signal $G(t)$ and the sensitivity $C$.
+Thus $\gamma_G$ affects $\gamma_D$ only through the evolving \emph{level} $G(t)$; one cannot replace levels by growth rates inside $\hat e$ or $D$ without tracking $G(t)$ itself.
+
+\subsubsection*{Relating $\gamma_D$ to the Employment Growth Rate Equation}
+
+The employment growth rate equation is given by:
+\begin{equation}
+\gamma_e = \frac{v m}{e} - s + \left[ \frac{D}{\pi e} - 1 \right]^- \label{eq:gammae}
+\end{equation}
+Here, $e$ is current employment, $v$ is vacancies, $m$ is the matching rate (hires per posted vacancy per unit time; in the simulation $m = K u$ with $u=U/L$, Equation~\ref{eq:matching_rate}), $s$ is the separation rate, and $[\cdot]^-$ is the negative part function.
+
+The term in Equation \ref{eq:gammae} that involves demand is $\frac{D}{\pi e}$. This term represents the ratio of target employment (implied by demand, $\hat{e} = D/\pi$) to current employment $e$, i.e., $R_{De} = \frac{\hat{e}}{e}$.
+
+A direct substitution of $\gamma_D$ into the term $\frac{D}{\pi e}$ is not mathematically straightforward because $D$ is a level, while $\gamma_D$ is a rate of change. They are fundamentally different types of quantities.
+
+However, we can substitute the expression for $D/\pi$ from Equation \ref{eq:demand} into the $\gamma_e$ equation:
+\begin{equation}
+\frac{D}{\pi e} = \frac{\sigma(1 + C G(t))}{e}
+\end{equation}
+
+Substituting this back into Equation \ref{eq:gammae} yields:
+\begin{equation}
+\gamma_e = \frac{v m}{e} - s + \left[ \frac{\sigma(1 + C G(t))}{e} - 1 \right]^- \label{eq:gammae_G}
+\end{equation}
+This expression for $\gamma_e$ directly incorporates the signal level $G(t)$.
+
+To relate this to $\gamma_G$, we would need to consider how $G(t)$ itself evolves over time based on $\gamma_G$. For example, if we assume $G(t)$ follows an exponential growth trajectory, $G(t) = G_0 e^{\gamma_G t}$, then we could substitute this into Equation \ref{eq:gammae_G}:
+\begin{equation}
+\gamma_e = \frac{v m}{e} - s + \left[ \frac{\sigma(1 + C G_0 e^{\gamma_G t})}{e} - 1 \right]^-
+\end{equation}
+This shows that $\gamma_e$ is influenced by $\gamma_G$ through its effect on the level of $G(t)$, which then drives the gap between desired and actual employment. However, it doesn't simplify into a form where $\gamma_G$ simply replaces $G(t)$ in the term. The relationship remains implicitly dependent on the dynamically evolving level of $G(t)$ and $e(t)$.
+We can take a step further by inserting the expression for the vacancies. In this case, the growth rate becomes 
+
+\begin{equation}
+\gamma_e = \frac{\left[ \sigma (1 + C G(t)) - e + \frac{e s}{m} \right]^+ m}{e} - s + \left[ \frac{\sigma(1 + C G(t))}{e} - 1 \right]^-
+\end{equation}
+
+\subsubsection*{Discrete-Time Theoretical Employment Growth Rate: Complete Dynamics}
+
+While the continuous growth rate $\gamma_e = \frac{\dot{e}}{e}$ is defined by the differential equation, in a discrete-time simulation with step size $\Delta t$, the actual evolution of employment $e$ is governed by an update rule. To compare the theoretical prediction directly with the empirical discrete growth rate, we must formulate a discrete-time theoretical rate that mirrors the simulation's mechanics, particularly the instantaneous firing rule.
+
+The simulation's update for employment at firm $i$ from time $t$ to $t+\Delta t$ is:
+\begin{equation}
+e_{t+1} = e_{t} + (\text{hires}_{t} - \text{separations}_{t} - \text{firing}_{t}) \cdot \Delta t \label{eq:discrete_update_growth}
+\end{equation}
+where:
+\begin{itemize}
+    \item $\text{hires}_{t} = v_{t} m_t$ (vacancies filled per unit time; $m_t = K u_t$ aggregates unemployment in the labor pool, Equation~\ref{eq:matching_rate})
+    \item $\text{separations}_{t} = e_{t} s$ (workers separating per unit time)
+    \item $\text{firing}_{t} = \max\left(0, e_{t} - \hat{e}_{t}\right)$ (instantaneous firing to meet demand if $e_{t} > \hat{e}_{t}$, expressed as an absolute number of workers fired).
+    \item $\hat{e}_{t} = \sigma (1 + C G_t)$ (target employment, using the signal level at time $t$).
+    \item $v_{t} = \left[ \sigma (1 + C G_t) - e_{t} + \frac{e_{t} s}{m_t} \right]^+$ (notional vacancies posted; continuous idealization---see below).
+\end{itemize}
+\paragraph{Discrete implementation details.}
+The code stores vacancies as nonnegative integers: the real-valued $v_t$ is floored and the fractional part is realized as one additional vacancy with probability equal to that fraction.
+For a given firm, substituting the expression for $v_{t}$ into the hires term and using the time-varying rate $m_t = K u_t$ (with $u_t = U_t/L$ in a single labor pool), the complete discrete change in employment is
+\begin{equation}
+\Delta e_{t} = e_{t+1} - e_{t} = \left( \left[ \sigma (1 + C G_t) - e_{t} + \frac{e_{t} s}{m_t} \right]^+ m_t - e_{t} s \right) \Delta t - \max\left(0, e_{t} - \sigma (1 + C G_t) \right).
+\end{equation}
+In a one-pool economy, $u_t$ (hence $m_t$) moves with aggregate employment unless an experiment fixes the unemployment path; there is no special case $m_t \equiv K$ except as an approximation when $u$ is nearly constant.
+This equation consolidates all the factors affecting employment change within a discrete time step, including vacancy posting, hiring, separations, and instantaneous firing, all driven by the current economic signal $G_t$ and existing employment $e_{t}$.
+
+Given this complete discrete update, the theoretical discrete-time growth rate $\gamma_e^{\text{discrete}}$ is precisely defined as the proportional change in employment over the time step $\Delta t$, transformed logarithmically to represent a continuous-compounding rate:
+\begin{equation}
+\gamma_e^{\text{discrete}} = \frac{1}{\Delta t} \ln\left( \frac{e_{t+1}}{e_{t}} \right)
+\end{equation}
+By substituting the full expression for $e_{t+1}$ (derived from the $\Delta e_{t}$ equation) into this definition, we obtain a theoretical growth rate that directly accounts for the simulation's discrete, non-linear adjustment mechanisms. This allows for a direct comparison with the empirically observed growth rates from the simulation, which also represent discrete proportional changes over $\Delta t$.
+
+Similarly, when considering proportional changes in the economic signal, we define its discrete growth rate as:
+\begin{equation}
+\gamma_G^{\text{discrete}} = \frac{1}{\Delta t} \ln\left( \frac{G_{t+1}}{G_{t}} \right)
+\end{equation}
+This framework is crucial for conceptualizing economic dynamics, as quantities like GDP and employment are often analyzed through their growth rates. The full discrete update equation for employment, even with its piecewise functions, captures how these proportional changes in employment arise from underlying mechanisms that respond to the level of the economic signal $G_t$ and its own evolving proportional change $\gamma_G^{\text{discrete}}$. The non-linear terms for vacancies and firing are particularly important in determining how smoothly or abruptly employment growth responds to changes in the signal, thus shaping the observed Beveridge curve.
+
+\subsection{Employment Efficiency}
+
+
+
+In the Beveridge model, the concept of "employment efficiency" can be understood as how well the firm's actual employment level $e$ aligns with its target employment $\hat{e}$. Deviations from target employment lead to various forms of inefficiency costs.
+
+We define the \textbf{Employment Efficiency Gap} (or simply, the normalized demand mismatch) for a firm $i$ at time $t$ as:
+\begin{equation}
+\epsilon_{t} = \frac{e_{t} - \hat{e}_{t}}{\hat{e}_{t}} = \frac{e_{t}}{D_{t}/\pi_i} - 1
+\end{equation}
+where $e_{t}$ is current employment, and $\hat{e}_{t} = D_{t}/\pi_i$ is the target employment level driven by demand $D_{t}$ and productivity $\pi_i$.
+
+Based on the sign of $\epsilon_{t}$, we can identify different cost regimes:
+
+\subsubsection{Cost Regimes based on Employment Efficiency Gap}
+
+The total inefficiency cost for a firm $C_i$ is composed of two primary components, reflecting the firm's challenge in perfectly matching employment to demand:
+
+{Case 1: Underemployment (Labor-Limited)}
+This occurs when the firm's actual employment is less than its target employment:
+\begin{itemize}
+    \item Condition: $e_{t} < \hat{e}_{t}$ (i.e., $\epsilon_{t} < 0$)
+    \item Demand Mismatch: $d_{t} = D_{t} - p_{t} > 0$
+    \item Cost Type: \textbf{Opportunity Cost} ($c_p$)
+    \item Description: The firm has insufficient workers to meet all potential demand. This results in lost revenue (unrealized profits) due to unmet demand.
+    \item Mathematical Expression:
+    \begin{equation}
+    c_p = [d_{t}]^+ = \max(0, D_{t} - e_{t}\pi_i) = \max(0, \hat{e}_{t}\pi_i - e_{t}\pi_i) = \pi_i \max(0, \hat{e}_{t} - e_{t})
+    \end{equation}
+    In terms of $\epsilon_{t}$:
+    \begin{equation}
+    c_p = \pi_i \max(0, -\epsilon_{t} \hat{e}_{t}) = \pi_i (-\epsilon_{t}) \hat{e}_{t} \quad \text{if } \epsilon_{t} < 0
+    \end{equation}
+\end{itemize}
+
+{Case 2: Overemployment (Market-Limited)}
+This occurs when the firm's actual employment exceeds its target employment:
+\begin{itemize}
+    \item Condition: $e_{t} > \hat{e}_{t}$ (i.e., $\epsilon_{t} > 0$)
+    \item Demand Mismatch: $d_{t} = D_{t} - p_{t} < 0$
+    \item Cost Type: \textbf{Excess Worker Cost} ($c_D$)
+    \item Description: The firm has more workers than needed to satisfy current demand. This results in additional labor costs for workers who are not fully utilized, or for whom demand cannot be met.
+    \item Mathematical Expression:
+    \begin{equation}
+    c_D = w(e_{t} - \hat{e}_{t}) = w(e_{t} - D_{t}/\pi) = \alpha \pi(e_{t} - \hat{e}_{t})
+    \end{equation}
+    where $\alpha = w/\pi$ is the wage share.
+    In terms of $\epsilon_{t}$:
+    \begin{equation}
+    c_D = \alpha \pi (\epsilon_{t} \hat{e}_{t}) \quad \text{if } \epsilon_{t} > 0
+    \end{equation}
+\end{itemize}
+
+{Case 3: Efficient Employment}
+\begin{itemize}
+    \item Condition: $e_{t} = \hat{e}_{t}$ (i.e., $\epsilon_{t} = 0$)
+    \item Description: The firm's employment perfectly matches its target demand. In this ideal scenario, both opportunity costs and excess worker costs are zero.
+\end{itemize}
+
+The total inefficiency cost $C$ is the sum of these two, where only one is typically active at a time:
+\begin{equation}
+C = c_p + c_D = \pi \max(0, \hat{e}_{t} - e_{t}) + \alpha \pi \max(0, e_{t} - \hat{e}_{t})
+\end{equation}
+This can also be written in terms of the demand mismatch $d_{t}$:
+\begin{equation}
+C = [d_{t}]^+ + [\alpha d_{t}]^-
+\end{equation}
+
+\subsection{State regimes}
+
+\subsubsection{Single firm equilibrium}
+Recalling the equations:
+\begin{eqnarray}
+v  (t) & = & \left[ D /\pi  - e  + e  s/m \right]^+ \label{vacancy}\\
+\frac{de }{dt} & = & v  m  - e  s + \left[ D /\pi  - e  \right]^-\label{employmentchange},
+\end{eqnarray}
+Assuming a time-independent signal at zero vacancies, the change in employment becomes
+\begin{equation}
+    0=[\sigma(1+CG_0)(1+\xi)-e(1+s/m)]^+
+\end{equation}
+It follows that vacancies are only posted when 
+\begin{equation}
+CG_0>\frac{e(1+s/m)}{\sigma (1+\xi)}-1
+\end{equation}
+When $G_0=0$, vacancies will still be posted when 
+\begin{equation}
+    \frac e\sigma>\frac{(1+\xi)}{1+s/m}.
+\end{equation}
+If we assume no surplus of labor, or $\xi=0$, vacancies are not posted as $s\rightarrow 0$, or when separations are negligible relative to the matching rate. A larger surplus also counteracts the separation rate.
+
+The equilibrium employment level, or whe $de/dt=0$ under two conditions. The first condition, when the target firm size is the current firm size and the third term is zero, the equilibrium firm size is $e=vm/s$, or
+\begin{equation}
+    e=v\frac{e}{\sigma(1+\xi)-e}.
+\end{equation}
+We can plug this term into the definition of the matching rate, $m=Ku$ to get an equilibrium matching rate
+\begin{equation}
+    K_{eq}=es/vu
+\end{equation}
+
+
+\subsubsection{Matching function convention}
+
+In the simulation, the individual firm's matching rate $m$ is defined as being proportional to the aggregate unemployment \emph{rate} $u = U/L$, rather than the unemployment count. Specifically,
+\begin{equation}
+    m(t) = K \cdot u(t) = K \cdot \frac{U(t)}{L},
+    \label{eq:matching_rate}
+\end{equation}
+where $u(t)$ is the unemployment rate (dimensionless) and $K$ is the matching rate constant with units of $\text{time}^{-1}$ (specifically, $\text{month}^{-1}$). Because $u$ is dimensionless, $K$ is population-independent: the same $K$ applies regardless of the number of firms or the total labor force $L$. The average vacancy fill time at unemployment rate $u$ is
+\begin{equation}
+    \tau_{\text{fill}} = \frac{1}{m} = \frac{1}{K\,u}.
+    \label{eq:fill_time}
+\end{equation}
+With the scaled pair $(K,\Delta t) = (0.54,\,1)$, matching satisfies $m\,\Delta t = K u\,\Delta t$ as before $(5.4,\,0.1)$ at the same $u$. The separation term $e\,s\,\Delta t$ uses the same $s$ with larger $\Delta t$, preserving mean separations per calendar span. A rough time scale is still $\tau \sim 1/(K u^* + s)$ in the same units as $s$; numerical defaults should be read off \texttt{config} and \texttt{time\_grid}.
+
+\subsubsection{Stability analysis}
+
+The discrete time step of the simulation is $e_{t+1}-e_t=(\hat e_t-e_t)m\Delta t$. Consider the gap $\epsilon_t = \hat e_t - e_t$. After one step,
+\begin{equation*}
+    \epsilon_{t+1} = \epsilon_t(1 - m\,\Delta t).
+\end{equation*}
+For convergence without overshoot we require $|1 - m\,\Delta t| < 1$, i.e.\ $0 < m\,\Delta t < 2$. Substituting $m = K\,u$, the non-oscillatory convergence condition is
+\begin{equation}
+    K \cdot u \cdot \Delta t < 1.
+    \label{eq:stability_rate}
+\end{equation}
+This is most likely to be violated at maximum unemployment rate $u_{\max}$, so the practical stability constraint is
+\begin{equation}
+    K\,u_{\max}\,\Delta t < 1.
+    \label{eq:stability_bound_rate}
+\end{equation}
+The simulation code uses a calendar span $T_{\mathrm{tot}} = 5000$ time units with step $\Delta t = 1$ and matching rate $K = 0.54$ (per unit time), chosen so the stability product matches the earlier calibration at $\Delta t = 0.1$, $K = 5.4$: namely $K\,\Delta t = 0.54$ is unchanged, hence $K\,u_{\max}\,\Delta t$ is unchanged for given $u_{\max}$. For $u_{\max} \approx 0.15$, $K\,u_{\max}\,\Delta t \approx 0.081$. Because this condition depends only on the unemployment \emph{rate}, it is independent of economy size. (Historical note: the same inequality was illustrated with $K = 5.4$, $\Delta t = 0.1$.)
+
+\subsubsection{Labor force initialization}
+
+The total labor force $L$ is determined by anchoring to a desired baseline unemployment rate $u^*$ evaluated at the neutral signal $G=0$.
+At baseline, target aggregate employment is $E_0 = \sum_i \sigm-i$, so we set
+\begin{equation}
+    L = \frac{E_0}{1 - u^*} = \frac{\sum_i \sigm-i}{1 - u^*}.
+    \label{eq:population_level}
+\end{equation}
+The default value $u^* = 0.05$ (5\%) gives a realistic peacetime unemployment floor.
+
+\section{Simulation results}
+\label{sec:simulation_results}
+
+\subsection{Demand signal: AR(2) process}
+
+The demand signal $G(t)$ driving firm target employment is generated from a second-order autoregressive (AR(2)) growth rate process with mildly skewed innovations,
+\begin{equation}
+    g_t = \bar g + \phi_1(g_{t-1}-\bar g) + \phi_2(g_{t-2}-\bar g) + \varepsilon_t,
+    \label{eq:ar2}
+\end{equation}
+where $\bar g = 0.02$ is the mean growth rate, $\phi_1 = 0.8$ and $\phi_2 = 0.1$ give persistent, cycle-like dynamics (the process is stationary since $\phi_1+\phi_2 < 1$), and innovations $\varepsilon_t = \sigma_\varepsilon z_t$ are generated via the nonlinear transformation
+\begin{equation}
+    z_t = \varepsilon_t' + \tfrac{\alpha}{6}({\varepsilon_t'}^2 - 1),\quad \varepsilon_t' \sim \mathcal{N}(0,1),
+\end{equation}
+with $\sigma_\varepsilon = 0.01$ and target skewness parameter $\alpha = -1.0$ (mild negative skew capturing the empirical asymmetry of recessions vs.\ recoveries in US GDP growth).
+The resulting AR(2) series $\{g_t\}$ is then mean-centered and rescaled to unit standard deviation, yielding the dimensionless signal
+\begin{equation}
+    G(t) = \frac{g_t - \bar g}{\mathrm{std}(g_t)} \cdot \sigma_G,
+\end{equation}
+with $\sigma_G = 0.25$.
+The calibration $C_{\max} = 0.08$ (see Section~\ref{sec:multifirm_calib}) was chosen so that, at the empirical signal extreme $G \approx \pm 0.6$ ($\approx 2.4\,\sigma_G$), the most sensitive firm experiences at most a $\pm 5\%$ swing in target employment, consistent with deep-recession magnitudes in US private-sector employment data.
+
+\subsection{Initialization and burn-in}
+
+For single-firm simulations, initial employment is set to $e_0 = \hat e_0 = \sigma(1+CG_0)$ and initial vacancies satisfy the flow balance $v_0 m = e_0 s$, placing the system on the Beveridge curve at $t=0$.
+For multi-firm simulations, initial employment is set analogously for each firm but the aggregate system requires a brief transient to reach its attractor.
+The system's characteristic relaxation time is of order $\tau \approx 1/(K u^* + s)$ in model time units (see code defaults for $K$, $\Delta t$, and burn-in length).
+To ensure all reported statistics and plots reflect steady-state dynamics, an initial burn-in is discarded (calendar-equivalent to the former 2000 steps at $\Delta t=0.1$, i.e.\ 200 time units).
+
+Figures 1 and 2 demonstrate the simulation and some theory (namely eq 17). Figure 3 demonstrates the model response to the AR(2) signal defined above.
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{signalsingleresponse.pdf}
+    \caption{Signal response characteristics in the single-firm model. LEFT: The input signal (top left) is a cosine wave, here plotted over one period. The posted vacancies and employee count (top right) relative to the baseline. The three signals overlapped (bottom left). The theoretical growth rate in equation 17 matches the empirical response. RIGHT: The trace of theoretical employment growth rate vs demand growth rate matches what is empirically observed.}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{growthrates.pdf}
+    \caption{LEFT: Theoretical equilibrium response of the model to demand shocks. We assume a firm with an employment level given by the x axis, with an equilibrium  vacancies. We then assume a "shock" given by the signal value specified on the y axis. We then measure the growth rate in vacancies (top left), growth rate in employment (top right), posted vacancies (bottom left) and employment change (bottom right), all over a single timestep. Single-step growth rates are reported in log units, where we have take the absolute values of negative growth rates (red).  LEFT: The beveridge cycle takes on a unique shape due to the constant matching rate imposed on the system. }
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{fluctuation_analysis_single_firm_ar2.pdf}
+    \caption{Fluctuation analysis (example: single-firm AR(2) signal). Histograms: unemployment rate $u=U/L$ (blue), vacancy rate $V/(V+E)$ (orange), and aggregate labor-demand log growth $g_D=\ln D_{\mathrm{agg}}(t+1)-\ln D_{\mathrm{agg}}(t)$ (green). Overlaid skew-normal fits report skewness $\gamma_1$ from Equation~(\ref{eq:skewnorm_gamma1}), not the raw shape $\alpha_{\mathrm{SN}}$. Bottom row: Beveridge plane $u$ vs.\ $v$; heatmaps of $u$ and vacancy rate vs.\ $g_D$.}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{sweep.pdf}
+    \caption{Parameter sweeps in sensitivity $C$ (top) and matching constant $K$. With static $m=Ku$, varying $K$ and $C$ leave the Beveridge curve shape largely unchanged in this diagnostic.}
+    \label{fig:placeholder}
+\end{figure}
+
+\section{Multifirm matching dynamics}
+\label{sec:multifirm_calib}
+
+\subsection{Heterogeneous sensitivity: the $C$ distribution}
+
+In the multi-firm model each firm $i$ has its own sensitivity coefficient $C_i$, so target employment is
+\begin{equation}
+    \hat e_i(t) = \sigm-i\bigl(1 + C_i G(t) + \et-i(t)\bigr),
+    \label{eq:demand_multi}
+\end{equation}
+where $\et-i$ is an idiosyncratic shock described in Section~\ref{sec:idio}.
+The distribution of $\{C_i\}$ determines how heterogeneous the aggregate response to demand shocks is.
+
+A key structural feature is a \emph{kernel of GDP-insensitive firms} at $C_i = 0$.
+These firms do not respond to aggregate demand fluctuations and therefore always maintain positive vacancy postings, preventing aggregate vacancies from collapsing to zero during downturns.
+With a fraction $f_0$ of such firms, the remaining $1 - f_0$ fraction have $C_i > 0$ sampled from a power-law distribution on $(0, C_{\max}]$ via inverse-CDF sampling,
+\begin{equation}
+    C_i = C_{\max}\, U_i^{1/\alpha}, \quad U_i \sim \mathrm{Uniform}(0,1),
+    \label{eq:power_law_C}
+\end{equation}
+which has probability density $f(C) \propto C^{\alpha-1}$ on $(0,C_{\max}]$.
+For $\alpha > 1$ the distribution is concentrated near zero, so most sensitive firms have small but nonzero $C_i$, with a thin tail toward $C_{\max}$.
+
+The current calibration uses $f_0 = 0.25$, $C_{\max} = 0.08$, and $\alpha = 2$.
+The choice $C_{\max} = 0.08$ is derived from the signal amplitude: since $G(t)$ reaches extremes of approximately $\pm 0.6$ ($\approx 2.4\,\sigma_G$), the most sensitive firm's target employment swings by $C_{\max} \times 0.6 \approx 5\%$, consistent with deep-recession magnitudes in US private-sector employment data.
+At a typical $1\sigma$ event ($G \approx \pm 0.25$), the same firm sees only a $\pm 2\%$ swing, while $C_i=0$ firms are unaffected throughout.
+The $\alpha=2$ power law places the median non-zero $C_i$ near $C_{\max}/\sqrt{2} \approx 0.057$, so the bulk of firms are moderately but not maximally sensitive.
+
+\subsection{Idiosyncratic demand shocks}
+\label{sec:idio}
+
+In the uniform-$C$ case, all firms respond identically to $G(t)$ and move in perfect synchrony.
+In reality, individual firms face demand fluctuations driven by firm-specific factors (contract wins and losses, local conditions, management changes) that are uncorrelated across firms.
+We capture this by adding a zero-mean AR(1) idiosyncratic shock $\et-i(t)$ to each firm's target employment as in Equation~(\ref{eq:demand_multi}),
+\begin{equation}
+    \et-i(t+1) = \rho\,\et-i(t) + \varepsilon_i(t), \quad
+    \varepsilon_i \sim \mathcal{N}(0,\sigma_\varepsilon^2),
+    \label{eq:ar1_idio}
+\end{equation}
+where the shocks are independent across firms, $\mathrm{Cov}(\varepsilon_i, \varepsilon_j) = 0$ for $i \neq j$.
+The stationary standard deviation of $\et-i$ is
+\begin{equation}
+    \sigma_\eta = \frac{\sigma_\varepsilon}{\sqrt{1-\rho^2}}.
+\end{equation}
+The current calibration uses $\rho = 0.9$ (half-life $\approx 7$ time steps) and $\sigma_\varepsilon = 0.01$, giving $\sigma_\eta \approx 0.023$, i.e.\ a $\pm 2.3\%$ firm-level demand fluctuation at $1\sigma$.
+
+At the aggregate level, the idiosyncratic contributions sum to a term with standard deviation $\sigma_\eta/\sqrt{N}$.
+For $N = 50$ firms, the aggregate idiosyncratic noise rate is $0.023/\sqrt{50} \approx 0.3\%$, negligible relative to the aggregate GDP signal contribution, consistent with the law of large numbers.
+The idiosyncratic shocks therefore desynchronize individual firm dynamics (producing a spread of vacancy time series even for equal-$C$ firms) without meaningfully distorting the aggregate Beveridge curve.
+
+\subsubsection{Aggregate labor demand and interpretable fluctuations}
+
+The common signal $G(t)$ is a dimensionless index (Section~\ref{sec:simulation_results}); firms map it to different proportional moves in target employment through $\sigma_i$ and $C_i$.
+To summarize labor demand in a single quantity with the same units as employment---analogous to reporting fluctuations in aggregate activity rather than in the raw index---define \textbf{aggregate labor demand}
+\begin{equation}
+    D_{\mathrm{agg}}(t) = \sum_{i=1}^N \hat e_i(t)
+    = \sum_{i=1}^N \sigm-i\bigl(1 + C_i G(t) + \et-i(t)\bigr).
+    \label{eq:agg_labor_demand}
+\end{equation}
+This coincides with summing firm-level target employment in the simulation (\texttt{employment\_demand}).
+For discrete time steps with $\Delta t$ implicit in the simulation index $t$, the \textbf{log growth of aggregate labor demand} is
+\begin{equation}
+    g_D(t) = \ln D_{\mathrm{agg}}(t+1) - \ln D_{\mathrm{agg}}(t),
+    \label{eq:agg_labor_log_growth}
+\end{equation}
+defined whenever $D_{\mathrm{agg}}(t)$ and $D_{\mathrm{agg}}(t+1)$ are strictly positive (otherwise that step is omitted from histograms).
+The fluctuation-analysis figures histogram unemployment and vacancy \emph{rates} together with $g_D(t)$ rather than $\ln(G(t+1)/G(t))$, because $G(t)$ is not a level like nominal GDP and may cross zero, whereas $D_{\mathrm{agg}}$ is strictly positive under standard calibrations and aggregates heterogeneous $(\sigm-i,C_i)$ into one interpretable labor-demand series.
+
+Each histogram is overlaid with a maximum-likelihood skew-normal density (location $\xi$, scale $\omega$, shape $\alpha_{\mathrm{SN}}$ in the usual $SN(\xi,\omega,\alpha_{\mathrm{SN}})$ parameterization, matching \texttt{scipy.stats.skewnorm}).
+Rather than annotating the raw shape parameter, plots report the \textbf{skew-normal skewness} (third standardized moment) $\gamma_1$, expressed in terms of $\alpha_{\mathrm{SN}}$ via
+\begin{equation}
+    \delta = \frac{\alpha_{\mathrm{SN}}}{\sqrt{1 + \alpha_{\mathrm{SN}}^2}},
+    \label{eq:skewnorm_delta}
+\end{equation}
+\begin{equation}
+    \gamma_1 = \frac{4 - \pi}{2}\,
+    \frac{\bigl(\delta\sqrt{2/\pi}\bigr)^3}{\bigl(1 - 2\delta^2/\pi\bigr)^{3/2}}.
+    \label{eq:skewnorm_gamma1}
+\end{equation}
+Legend entries show $\gamma_1$ together with the fitted $\xi$ (\texttt{loc}) and $\omega$ (\texttt{scale}).
+
+Note: firm-level dollar demand in the introduction is still denoted $D_i$; $D_{\mathrm{agg}}$ here is \emph{labor} demand in worker units (sum of $\hat e_i$), not $\sum_i D_i$ in revenue units unless $\pi_i$ is normalized so that the two coincide.
+The AR(2) innovation skew parameter in Section~\ref{sec:simulation_results} is a separate $\alpha$ and should not be confused with $\alpha_{\mathrm{SN}}$.
+
+\section{Appendix: Narrative aggregation, endogenous GDP, and empirical roadmap}
+
+\subsection{Vacancies versus firing in downturns}
+
+During an upturn a firm raises vacancies to hire; in a downturn it can cut vacancies, fire workers, or both.
+A simple behavioral story is that firms shrink vacancies toward zero before laying off workers.
+Because vacancies are nonnegative, small negative demand shocks mostly show up as falling vacancies while employment adjusts slowly through matching; sufficiently large negative shocks force firing once vacancies are exhausted.
+Hiring remains gradual (limited by $m$ and posted $v$), whereas cuts to vacancies and (when needed) firing can be abrupt.
+Together with heterogeneity in $\{C_i\}$---including a kernel of GDP-insensitive firms (Section~\ref{sec:multifirm_calib})---this helps rationalize aggregate vacancies that do not collapse to zero whenever GDP softens.
+
+\subsection{Endogenous GDP and consistency with the signal}
+
+Define model output (GDP analogue)
+\begin{equation}
+    g_t = \sum_{i=1}^N \pi_{i}\, e_{i,t}.
+\end{equation}
+When the common signal $G(t)$ is constructed from empirical macro data, simulated $g_t$ need not coincide with that series: in the code, $G$ is an exogenous input path.
+Closing the model by feeding $G$ derived from simulated $\{g_t\}$ would introduce feedback and possible instability under backward-looking rules; that closure is not implemented here.
+
+Using the \emph{level} of demand implied by $G(t)$ (rather than only its short-run growth rate) stabilizes hiring dynamics: positive demand episodes lasting several periods accumulate a gap between $\hat e$ and $e$ while vacancies fill, which rate-only signal formulations do not capture as cleanly.
+
+\subsection{Two-firm sketch with $m=Ku$}
+
+Take $N=2$.
+Firm~1 has constant target $\hat e_1=\sigma_1$; firm~2 has $\hat e_2(t)=\sigma_2(1+C\,G(t))$.
+Total employment is $E=e_1+e_2$, unemployment mass $U=L-E$, unemployment rate $u(t)=U/L$, and matching rate $m(t)=K u(t)$ common to both firms.
+With immediate firing to target when over-employed,
+\begin{eqnarray}
+    v_i(t) &=& \bigl[\hat e_i(t) - e_i(t) + e_i(t) s/m(t)\bigr]^+,\\
+    \frac{de_i}{dt} &=& v_i(t)\, m(t) - e_i(t) s - \bigl[\hat e_i(t) - e_i(t)\bigr]^- .
+\end{eqnarray}
+If firm~1 sits at $\hat e_1$ then $e_1=\sigma_1$ and $v_1=\sigma_1 s/m$.
+Coupling enters only through $m(t)=K(L-E(t))/L$.
+An intensive aggregate vacancy measure is $v^{\mathrm{int}}(t)=(v_1+v_2)/L$, to pair with the unemployment rate $u(t)$.
+
+\subsection{Many sectors and a continuum limit}
+
+With large $N$, heterogeneous $C_i$ can be summarized by a cross-sectional density; coupling across types remains weak except through the scalar $m=Ku$.
+A continuum limit replaces the firm index by a coordinate $x$ and $C_i$ by a density $C(x)$, yielding a PDE in $(x,t)$ whose structure is unusual because all types share the same aggregate $u(t)$.
+
+\subsection{Empirical and computational roadmap}
+
+\begin{itemize}
+    \item Cross-check this document against the discrete-time implementation in the repository.
+    \item Step and sine experiments for $G(t)$; sweeps over $\sigma_i$, $C_i$, and $K$.
+    \item Use efficiency-gap diagnostics (employment efficiency subsection above) alongside Beveridge plots.
+    \item Optional: estimate $\{C_i\}$ from disaggregated data; richer $N$-firm calibration to aggregate moments.
+    \item Fit parsimonious two-type aggregates (as in the two-firm sketch) as a stepping stone to multisector extensions.
+\end{itemize}
+
+\section{Alternative matching microfoundations (not implemented)}
+\label{sec:naidu_not_impl}
+
+\textbf{The running simulation uses only $m=Ku$ (Equation~\ref{eq:matching_rate}).}
+The remainder of this section records a hypothetical market-tightness / Cobb--Douglas matching extension following Naidu (2006); \emph{none of it is implemented in the codebase.}
+By contrast, the implemented per-firm hiring rate is independent of the aggregate vacancy stock: $m$ depends on unemployment only.
+
+We would like to have some variable dependent on the market tightness $\theta=V/U$, which measures the overall balance of vacancies and unemployment.
+We show that in an aggregated model derived by Naidu in 2006, when vacancies scale as constant unemployment, employees have an easier time getting hired as measured by the probability of unemployment decreasing.
+Meanwhile, under these conditions, firms have a harder time finding employees as the probability of filling individual vacancies decreases.
+In the subsections below, we sketch a similar microfoundation where market tightness emerges as a quantity determining matching probabilities.
+
+\subsection{Naidu's original aggregated model}
+
+According to Naidu 2006, the number of matches in a hiring process is given by a function of the Cobb-Douglas form
+\begin{equation*}
+    M(U,V)=U^{\frac{\alpha}{\alpha+\beta}}V^\frac{\beta}{\alpha+\beta}n^\frac{1}{\alpha+\beta}l
+\end{equation*}
+for total unemployment (by counts) $U$, total vacancies $V$, firm count $n$, and Levy-stable random variable $l$.
+The matching process is modeled as the probability of a firm posting a certain number of vacancies that is a particular fraction of its size, which are Pareto-distributed, and the probability that that vacancy results in a match, which he argues are also Pareto-distributed. 
+Applying the weak CLT cross-sectionally across firms (in the asymptotic limit) where we assume matches and listings are i.i.d, produces a 
+Levy-stable random process. This term $l$ arises from the heavy-tailednes of interactions, while $n$ scales nonlinearly as an artifact of applying the CLT to a Pareto distribution. Here, $\alpha$ is the Pareto parameter of the heavy-tailed distribution of firm access to employees (eg through a network), and $\beta$ is the similarly distributed parameter for firm sizes.
+
+We can make the parameter substitution $\eta=\alpha/(\alpha+\beta)$, from which it follows that $1-\eta=\beta/(\alpha+\beta)$. These exponents imply that $M$ is a constant-returns Cobb-Douglas function, or that the exponents sum to one (which was obvious from the first equation, but is nice to see explicitly). An important implication of assuming heavy-tailed match productivity is that cross-sectional aggregation does not eliminate fluctuations via the law of large numbers. Instead, aggregate matching converges to a stable distribution with scale proportional to $n^{1/(\alpha+\beta)}$ (which is CLT but with heavy-tail scaling), where $n$ is the number of firms. As a result matching efficiency is an emergent, scale-dependent quantity 
+\begin{equation}
+    \mu=n^\frac{1}{\alpha+\beta}l,
+\end{equation}
+where $l$ is a stable random variable capturing aggregate matching fluctuations. 
+We can then rewrite matches as 
+\begin{equation}
+    M(U,V)=\mu U^\eta V^{1-\eta}
+\end{equation}
+
+\subsubsection{Individual hiring probability}
+
+The individual hiring probability is then the total overall matches $M$ divided by the total unemployment $U$, which is the fraction of job-searchers attaining a job each time step. 
+\begin{equation}
+    M/U\equiv h=\mu \theta^{1-\eta},
+\end{equation}
+where $\theta=V/U$ is the market tightness.
+Market tightness increases with vacancies, and shrinks with overall unemployment.
+Therefore, as the overall number of vacancies increases, so does the probability that an individual finds a job.
+
+We can verify this by analyzing the first order derivatives of $h$ with respect to $V$ and $U$.
+They are 
+\begin{equation*}
+    \frac{\partial h}{\partial V}=\frac{\mu(1-\eta)}{V^\eta U^{1-\eta}};\hspace{.25cm}\frac{\partial h}{\partial U}=-\mu(1-\eta)\frac{V^{1-\eta}}{U^{2-\eta}}.
+\end{equation*}
+The derivative w.r.t. $V$ is strictly positive, so the hiring rate for an individual increases with vacancies. The derivative w.r.t. $U$ is strictly negative, so if $\Delta h=\tfrac{\partial h}{\partial U}\Delta U$, then matching rate only increases when the unemployment rate decreases. 
+
+Lastly, the hiring rate is monotonic in the matching rate $\mu$. However, the hiring rate scales nonlinearly with firm count $n$, except when $\alpha+\beta=1$. 
+For elasticities that sum to be less than one, scaling is superliniear, and sublinear for elasticities greater than one.
+% The partial derivative w.r.t. firm count is 
+% \begin{equation*}
+%     \frac{\partial h}{\partial n}=
+%     \frac{\eta}{\alpha} n^{\frac{\eta}{\alpha}-1}{\alpha}l\theta^{1-\eta}.
+% \end{equation*}
+
+\subsubsection{Firm hiring probability}
+
+The probability a vacancy is filled is given by the total matches divided by the number of vacancies
+\begin{equation}
+    M/V\equiv q=\mu\theta^{-\eta}
+\end{equation}
+So as other firms post jobs, increasing the number of vacanies, the probability a single firm fills their vacancies at constant unemployment decreases. 
+In constrast, higher unemployment shrinks $\theta$, resulting in increased hiring rate. 
+We can further demonstrate this concept by separating vacancies into those belonging to the target firm and those not, $V=V_0+V_c$, where $c$ denotes the sum over all competition. We then evaluate the derivative $\partial q/\partial V_c$  
+The derivative evaluates to 
+\begin{equation}
+    \frac{\partial q}{\partial V_c}=-\mu\eta\frac{U^{\eta}}{(V_0+V_c)^{(\eta+1)}}
+\end{equation}
+This expression means generally that hiring rate decreases as a function of $V_c$. 
+Considering that $\Delta q=\tfrac{\partial q}{\partial V_c}\Delta V_c$, then we see that the hiring rate decreases as $V_c$ increases and vice versa. 
+From the symmetry of the vacancy rates, we also find that hiring rates also decrease with increased vacancies at constant unemployment. This also makes sense, as saturating the market with job listings would result in fewer hires per vacancy. 
+
+Taking the partial derivative w.r.t. unemployment yields
+\begin{equation}
+    \frac{\partial q}{\partial U}=\mu\eta\frac{U^{\eta-1}}{V^\eta},
+\end{equation}
+which is monotonically positive in $U$. It follows that as the firm's matching rate increases with unemployment.
+
+The scale-dependence of the matching rate has similar elasticity-conditional scaling conditions, with firm count, as does the individual hiring rate. 
+
+\subsection{A microfounded model}
+
+Here, we develop a microfounded model where we endogenously compute vacancies, and determine coverage reach sampled from a Pareto distribution as developed in (Naidu, 2006).
+As before, the unemployment is computed as $U=N-\sum_ie_i$ for employment pool of size $N$, and firm employment level $e_i$.
+Assuming that a firm posts $v_i$ vacancies each time step, their matches will be $M_i=\min(-iU,v_i)$, where $-i$ is an access parameter determining the coverage of the unemployment market their advertisements can reach. 
+This means that the realized matches is bounded above by either their employment market coverage $-iU$ or vacancies.
+We aggregate matches as $M=\sum_iM_i$, $V=\sum_i v_i$, and identify the market tightness as $\theta=V/U$.
+Similar to Naidu's model, we assume that the firm's market coverage is determined by the Pareto distribution $P(-i>A)=(a_{\min}/A)^{\alpha}$ for $A\geq 1$.
+Here, $a_{\min}$ is the minimum employee network coverage the firm has, and is the "scale" parameter of the Pareto distribution, whereas $\alpha$ contributes the scale (ie the tail).
+
+Whether the firm hires to capacity given their vacancies depends on the draw of their coverage of the full population. 
+In other terms, consider the threshold coverage $-i^\prime$, where if $-i>-i^\prime$, the firm reaches more hirees than they can handle, and fill all vacancies $M_i=v_i$,  and otherwise $M_i=-iU$ and they only fill however many they reach.
+Put succinctly, $P(M_i=v_i)=P(-i\geq \frac{v_i}{U})$
+The right side of the inequality in the Pareto distribution becomes the argument of the function, so our probabilities can be written as 
+\begin{equation}
+    P(M_i=v_i|v_i)=\bigg(\frac{a_{\min}U}{v_i}\bigg)^{\alpha},\hspace{.25cm} P(M_i=-iU|v_i)=1-\bigg(\frac{a_{\min}U}{v_i}\bigg)^{\alpha}.
+\end{equation}
+Trivially, if we assume that the firm never posts more vacancies than it can trivially reach, $v_i/U<a_{\min}$, the firm makes $v_i$ hires with probability one. The corresponding pdf is
+
+\begin{equation}
+    p(a)=\alpha a_{\min}^\alpha a^{-(\alpha+1)},\hspace{.25cm} a\geq a_{\min}
+\end{equation}
+
+The expected hires when the firm posts more vacancies than it can trivially reach is computed from the piecewise definition of hires (ie at or below vacancies). This is defined as 
+\begin{equation*}
+\begin{split}
+    \textrm{E}[M_i|v_i]&=\textrm{E}[-iU\mathbf 1\{-i\leq \frac{v_i}{U}\}]+\textrm{E}[v_i\mathbf 1\{-i> \frac{v_i}{U}\}]\\
+    &=\int_{a_{\min}}^\infty\min(aU,v_i)f(a)da
+\end{split}
+\end{equation*}
+We note that $\textrm{E}[v_i\mathrm 1\{-i>\frac{v_i}{U}\}]=v_iP(-i>\frac{v_i}{U})$, because if the firm surpasses the threshold of matches, they automatically fill all the vacancies. 
+The second line is a condensed version that folds the identity function into the min. We can evaluate the two expectation values separately as
+\begin{equation*}
+\begin{split}
+    \textrm{E}[-iU\mathbf 1\{-i\leq \frac{v_i}{U}\}]&=U\int_{a_{\min}}^{\frac{v_i}{U}}af(a)da=U\alpha a_{\min}^\alpha\int_{a_{\min}}^{\frac{v_i}{U}}a^{-\alpha}da\\
+    &=\frac{U\alpha a_{\min}^\alpha}{1-\alpha}\Bigg[\bigg(\frac{v_i}{U}\bigg)^{1-\alpha}-a_{\min}^{1-\alpha}\Bigg]
+\end{split}
+\end{equation*}
+The second expectation value is 
+\begin{equation*}
+\begin{split}
+    v_iP(-i>\frac{v_i}{U})&=(a_{\min} U)^\alpha v_i^{1-\alpha}
+\end{split}
+\end{equation*}
+The full expectation value is then
+\begin{equation}
+  \textrm{E}[M_i|v_i]  =\frac{U\alpha a_{\min}^\alpha}{1-\alpha}\Bigg[\bigg(\frac{v_i}{U}\bigg)^{1-\alpha}-a_{\min}^{1-\alpha}\Bigg]+(a_{\min} U)^\alpha v_i^{1-\alpha}
+\end{equation}
+\subsubsection{Aggregation and coupling via the unemployment}
+Given a realized set of vacancies $\{v_i\}_{i=1}^n$, we can define the aggregate matches in a timestep
+\begin{equation}
+    M=\sum_{i=1}^n\min(-iU,v_i)\rightarrow\textrm E[M|\{v_i\}]=\sum_{i=1}\textrm E[M_i|v_i]
+\end{equation}
+Furthermore, we can separate vacancies into those posted by our firm, and other firms as
+\begin{equation*}
+    V\equiv\sum_jv_j=v_j+V_{-i};\hspace{.25cm} E=\sum_je_j=e_j+E_{-i}
+\end{equation*}
+Now, lets redefine $U$ to be a function of other firms' employment state $U=U(V,E)$ and the firm's vacancies as a function of its employment levels, the signals, and the current unemployment (which was in the original matching model through $m$), $v_i=v_i(\hat e_i,e_i,U)$. Then, we can write out the partial derivative of the expected matchings with respect to the vacancies posted by other firms as 
+\begin{equation}
+   \frac{d}{dV_{-i}}\textrm{E}[M_i|v_i]=\frac{\partial \textrm E[M_i|v_i]}{\partial U}\frac{\partial U}{\partial V_{-i}}+ \frac{\partial \textrm E[M_i|v_i]}{\partial v_i}\frac{\partial v_i}{\partial V_{-i}}
+\end{equation}
+The second term of the second partial derivative is zero in our model, as firms do not directly respond to the volume of other firm's postings. We know from the earlier equations that $\frac{\partial U}{\partial V_{-i}}$ is probably negative, and the first partial derivative of that term is positive. Therefore increasing vacancies of other firms drives the total matching of our firm down.  
+\end{document}

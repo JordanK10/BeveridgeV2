@@ -6,11 +6,15 @@ A micro-founded agent-based model that simulates the Beveridge Curve (unemployme
 
 ```
 BeveridgeV2/
-├── src/                    # Python source scripts
-│   ├── beveridge.py       # Main simulation engine
-│   ├── ar2generator.py    # Generates AR(2) stochastic GDP signals
-│   ├── special_signals.py # Generates test signals (sine, step, custom)
-│   └── dummy_gdp_gen.py   # Generates simple baseline GDP signal
+├── src/
+│   ├── beveridge/                 # Simulation core (config, firm, economy, signals, experiments, main)
+│   ├── plotting/                # Figures, Beveridge trajectory, diagnostics, aggregate rates
+│   ├── generators/              # CLIs that write pickles under data/
+│   ├── legacy/                  # Optional test signals (not used by default main)
+│   ├── time_grid.py             # DT, STEPS, TIME, interpolate_series
+│   ├── discrete.txt             # RevTeX theory write-up (aligned with simulation)
+│   ├── beveridge_population_base.py  # Backward-compatible shim + __main__
+│   └── beveridge_plot_funcs.py  # Backward-compatible re-exports of plotting.*
 │
 ├── data/                   # Input data files (.pkl)
 │   ├── dummy_gdp.pkl      # Baseline GDP signal
@@ -18,55 +22,66 @@ BeveridgeV2/
 │   └── ar2_signal.pkl     # AR(2) stochastic signal
 │
 ├── output/                 # Generated plots and results
-│   ├── *.png              # Main output plots
-│   ├── demand_shock/      # Shock experiment results
-│   ├── gdp_curve/         # AR(2) experiment results
-│   └── interactive_output/ # Interactive experiment results
 │
-└── docs/                   # Documentation
-    ├── obsidiannote.txt   # Theoretical model derivation
-    └── note.txt           # Additional notes
+└── docs/                   # Short pointers; see src/discrete.txt for theory
 ```
+
+## Signal pipeline
+
+The default simulation builds its in-memory `GDP` frame from two pickle files under `data/`:
+
+| Pickle | Generator | Role |
+|--------|-----------|------|
+| `dummy_gdp.pkl` | `python src/generators/dummy_gdp_gen.py` | Baseline / sine-style columns interpolated onto the model time grid. |
+| `ar2_signal.pkl` | `python src/generators/ar2generator.py` | AR(2) growth series → `gdp_ar2`. Default `GDP_SIGNAL_NAME` is `gdp_ar2`. |
+
+`src/legacy/special_signals.py` produces idealized test signals on its own grid. It is **not** imported by the default entry point.
 
 ## Quick Start
 
+**Canonical run** (from project root; `src` must be on `PYTHONPATH`):
+
+```bash
+PYTHONPATH=src python -m beveridge.main
+```
+
+Equivalent: `cd src && python -m beveridge.main` (current directory is on `sys.path`).
+
+**Shim entry** (prepends `src` automatically):
+
+```bash
+python src/beveridge_population_base.py
+```
+
 1. **Generate data signals** (if needed):
+
    ```bash
-   python src/dummy_gdp_gen.py      # Creates baseline GDP signal
-   python src/special_signals.py    # Creates test signals
-   python src/ar2generator.py       # Creates AR(2) stochastic signal
+   python src/generators/dummy_gdp_gen.py
+   python src/generators/ar2generator.py
+   python src/legacy/special_signals.py   # optional
    ```
 
-2. **Run the main simulation**:
-   ```bash
-   python src/beveridge.py
-   ```
+2. Run as above; plots go to `output/`.
 
-   This will:
-   - Load GDP signals from `data/`
-   - Run the Beveridge Curve simulation
-   - Save plots to `output/`
+## Key modules
 
-## Key Scripts
-
-- **`beveridge.py`**: Main simulation engine with `Firm` class and market dynamics
-- **`special_signals.py`**: Generates idealized test signals (sine waves, step functions, custom sawtooth)
-- **`ar2generator.py`**: Generates realistic stochastic GDP with engineered recessions
-- **`dummy_gdp_gen.py`**: Simple constant/baseline GDP signal generator
+- **`beveridge` package**: `Firm`, market loop, experiments, `main()`
+- **`plotting` package**: `compute_rates`, Beveridge and diagnostic figures
+- **`generators/`**: AR(2) and dummy GDP pickle writers
+- **`legacy/special_signals.py`**: Optional idealized signals
 
 ## Model Overview
 
 The model simulates firms that:
+
 - Calculate target employment based on GDP/demand signals
 - Post vacancies when understaffed
 - Adjust employment through matching and separation processes
-- Generate Beveridge Curves showing unemployment-vacancy relationships
+- Generate Beveridge curves showing unemployment-vacancy relationships
 
-See `docs/obsidiannote.txt` for the theoretical foundation.
+See `docs/obsidiannote.txt` and `src/discrete.txt` for theory.
 
 ## Notes
 
-- All scripts are designed to be run from the project root directory
-- Output files are automatically saved to `output/` with appropriate subdirectories
-- Data files are read from `data/` directory
-- The model supports parameter sweeps to explore different configurations
+- Run generators and `PYTHONPATH=src` workflows from the **project root** so `data/` and `output/` resolve correctly.
+- Data files are read from `data/`; outputs go to `output/`.
