@@ -5,6 +5,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from plotting.rates import aggregate_vacancy_rate
 from time_grid import DT
 
 
@@ -140,13 +141,11 @@ def plot_uv_cross_correlation(
 
 
 def _rates_from_levels(aggregate_unemployment, aggregate_vacancies, population, burn_in):
-    """Match diagnostics.plot_fluctuation_analysis rate definitions after burn-in."""
+    """Match diagnostics: u=U/L, v=v/(v+e) via :func:`plotting.rates.aggregate_vacancy_rate`."""
     u = np.asarray(aggregate_unemployment, dtype=float)[burn_in:]
     vlev = np.asarray(aggregate_vacancies, dtype=float)[burn_in:]
-    e = population - u
-    ur = u / population
-    denom = vlev + e
-    vr = np.divide(vlev, denom, out=np.zeros_like(vlev, dtype=float), where=denom > 0)
+    ur = u / float(population)
+    vr = aggregate_vacancy_rate(u, vlev, population)
     return ur, vr
 
 
@@ -181,7 +180,7 @@ def plot_uv_lag_experiment_from_series(
     if transform == "demean_rates":
         u = ur - np.mean(ur)
         v = vr - np.mean(vr)
-        transform_label = r"Series: $u=U/L$, $v=V/(V+E)$; demeaned"
+        transform_label = r"Series: $u=U/L$, $v=v/(v+e)$; demeaned"
     elif transform == "diff_rates":
         u = np.diff(ur)
         v = np.diff(vr)

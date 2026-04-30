@@ -1,0 +1,259 @@
+MULTI-BASIN OLS FITTING ALGORITHM
+==================================
+src/calibration/fit.py
+
+Overview
+--------
+The goal is to fit three model parameters — K, c_exponent (α_C), and idio_std
+— to empirical unemployment and vacancy time series by minimizing a
+sum-of-squared-residuals (OLS) objective. The remaining parameters are fixed:
+
+    s                = 0.01   (separation rate)
+    zero_fraction    = 0.50   (fraction of GDP-insensitive firms)
+    firing_threshold = 0.00   (instantaneous firing)
+    c_max            = 1.00   (power-law scale; shape controlled by c_exponent)
+
+Because the simulation is non-differentiable and the loss surface may be
+multimodal, the algorithm is designed to find several distinct local optima
+rather than a single global minimum.
+
+The pipeline has three stages.
+
+
+Stage 1: Latin Hypercube Scan
+------------------------------
+The 3D parameter space is explored coarsely using Latin Hypercube Sampling (LHS).
+LHS divides each parameter dimension into n equal intervals and places exactly one
+sample per interval, guaranteeing uniform marginal coverage. For n=500 points this
+gives far better coverage of the 3D space than a grid (a 16^3 grid would require
+4096 evaluations for equivalent resolution, but LHS also avoids clustering).
+
+Free parameter bounds:
+    K             : [2.00, 7.00]
+    c_exponent    : [0.25, 1.00]
+    idio_std      : [0.001, 0.06]
+
+At each sample point the simulation is run once and eight losses are computed
+simultaneously:
+
+    mse_u          = mean( w * (u_sim - u_emp)^2 )
+    mse_v          = mean( w * (v_sim - v_emp)^2 )
+    mse_combined   = mean( w * (a*(u_sim - u_emp) + b*(v_sim - v_emp))^2 )
+    mse_du         = mean( w' * (Δu_sim - Δu_emp)^2 )
+    mse_dv         = mean( w' * (Δv_sim - Δv_emp)^2 )
+    mse_d_combined = mean( w' * (a*(Δu_sim - Δu_emp) + b*(Δv_sim - Δv_emp))^2 )
+    mse_bc         = mean( w  * ((u_sim-u_emp)^2 + (v_sim-v_emp)^2) )
+    mse_flow       = mean( w' * ((Δu_sim-Δu_emp)^2 + (Δv_sim-Δv_emp)^2) )
+
+where a and b are user-specified weights (default a=b=0.5), Δ denotes the
+first difference (month-to-month change), w is an optional per-period sample
+weight vector, and w' is the corresponding weight for difference periods
+(average of adjacent w values). The first-difference objectives penalise models
+that produce a flat trajectory near the empirical mean without capturing
+recession/recovery dynamics. Running all eight losses from a single simulation
+pass means the scan cost is the same regardless of how many objectives are
+optimized.
+
+The Beveridge-space objectives (mse_bc, mse_flow) treat (u,v) as a joint 2D
+point rather than two independent scalars. The critical difference from
+mse_combined and mse_d_combined is that residuals cannot cancel across
+dimensions: a model that overshoots u while undershooting v by the same amount
+scores zero on mse_combined (the errors cancel in the dot product) but is
+correctly penalised by mse_bc. mse_bc targets the static geometry of the
+Beveridge curve; mse_flow targets the direction, magnitude, and persistence of
+movement through Beveridge space at each time step.
+
+Sample weights can be used to down-weight specific episodes. In practice, the
+acute COVID shock (Apr–Aug 2020) is set to weight 0.1 because the labour-market
+spike in those months is partly a policy/lockdown effect the matching model is
+not designed to capture; the March 2020 GDP drop is the signal the model should
+respond to.
+
+The scan is parallelised across 8 workers.
+
+
+Stage 2: Basin Identification
+------------------------------
+From the scan results, N distinct low-loss parameter neighbourhoods (basins) are
+identified for each of the six objectives independently using a greedy
+max-separation algorithm:
+
+    1. Sort all scan evaluations by the chosen objective (ascending).
+    2. Restrict to the top fraction (default: lowest 20%) as candidates.
+    3. Seed with the globally best candidate.
+    4. Iteratively select the candidate whose minimum normalised distance to any
+       already-selected seed is largest — i.e. always pick the point that is most
+       different from what has already been selected.
+    5. Reject candidates whose minimum distance falls below a separation threshold
+       (default: 0.15, meaning 15% of the normalised parameter range).
+    6. Repeat until N basins are found.
+    7. Interior-basin check: if every selected seed has at least one parameter
+       within 5% of a bound (i.e. all seeds are "boundary points"), force-inject
+       the best-loss candidate that is interior (all parameters > 5% from every
+       bound). This guarantees that Nelder-Mead always explores at least one
+       non-boundary region, even when the global optimum appears to lie at a boundary.
+
+Distances are computed in normalised parameter space (each dimension scaled to
+[0,1] by its bounds) so that parameters with different units and scales are
+treated comparably.
+
+This procedure guarantees that basin seeds are both low-loss and well-separated
+in parameter space, making it unlikely that two seeds represent the same local
+optimum. The interior-basin injection additionally ensures that boundary crowding
+does not prevent exploration of the parameter interior.
+
+
+Stage 3: Local Refinement
+--------------------------
+Each basin seed is refined independently using Nelder-Mead (downhill simplex)
+optimisation. Nelder-Mead is chosen because:
+
+    - It is gradient-free and handles non-differentiable objectives.
+    - It works well in low-dimensional spaces (3 parameters here).
+    - It does not require finite-difference gradient approximations, which would
+      be noisy given the stochastic simulation.
+
+Parameters are clipped to their bounds at every function evaluation. The
+refinement terminates when the simplex diameter falls below 1e-5 or the function
+value change falls below 1e-8, or after 500 iterations.
+
+Each refined basin reports:
+    - The optimal parameter vector.
+    - The loss under all six objectives (even if only one was optimized).
+    - Whether the optimizer converged.
+    - The number of iterations taken.
+    - seed_interior: whether the LHS seed was interior (all params > 5% from bounds).
+    - at_boundary: whether Nelder-Mead converged to a boundary point.
+
+
+Outputs
+-------
+Results are saved to output/fit/ (or the specified output_dir):
+    lhs_scan.csv              — all LHS evaluations with all eight losses
+    basins_mse_u.csv          — refined basins for the u level objective
+    basins_mse_v.csv          — refined basins for the v level objective
+    basins_mse_combined.csv   — refined basins for the combined level objective
+    basins_mse_du.csv         — refined basins for the Δu objective
+    basins_mse_dv.csv         — refined basins for the Δv objective
+    basins_mse_d_combined.csv — refined basins for the combined Δ objective
+    basins_mse_bc.csv         — refined basins for the Beveridge-space distance objective
+    basins_mse_flow.csv       — refined basins for the Beveridge-space flow objective
+
+Each basin CSV includes seed_interior and at_boundary columns to make it easy
+to identify boundary vs. interior solutions.
+
+The eight sets of basins can be compared to identify parameter regions that are
+robust across objectives versus those that only fit one series or one type of
+moment (level vs. dynamics vs. Beveridge-space geometry) well.
+
+
+Interpreting Multiple Basins
+-----------------------------
+Because the Beveridge curve is an equilibrium relationship between u and v, there
+can be multiple parameter combinations that reproduce the empirical trajectory
+approximately equally well. For example:
+
+    - High K (fast matching) with high s (fast separation) can produce similar
+      steady-state unemployment to low K with low s.
+    - Low c_exponent (many sensitive firms) can mimic high c_exponent (few very
+      sensitive firms) at the aggregate level when zero_fraction is adjusted.
+
+The multi-basin approach surfaces these degeneracies explicitly. Basins that
+appear consistently across the level objectives (mse_u, mse_v) and the
+first-difference objectives (mse_du, mse_dv) are more likely to represent
+genuinely distinct mechanisms rather than artifacts of the particular loss
+function used. A basin that fits levels well but not dynamics (or vice versa)
+signals a structural mismatch between the model and the data for that region
+of parameter space.
+
+
+NEW IDEA
+
+\subsection{Fitting Beveridge-Space Dynamics Instead of Marginal Time Series}
+
+A limitation of fitting unemployment and vacancies independently through
+pointwise mean-squared error objectives,
+\[
+u(t), \qquad v(t),
+\]
+is that the optimization primarily rewards matching long-run averages and
+low-frequency trends, rather than correctly reproducing the intertemporal
+response dynamics of the labor market. In practice, this can produce simulated
+trajectories that remain near the empirical mean while failing to capture the
+timing, persistence, hysteresis, and geometric structure of recession and
+recovery episodes.
+
+To address this, we instead propose fitting the dynamics directly in
+\emph{Beveridge space}. Rather than treating unemployment and vacancies as two
+separate marginal time series, the empirical target becomes the trajectory
+\[
+(u(t),v(t)),
+\]
+or equivalently the dynamical response rule
+\[
+(\Delta u_t,\Delta v_t)
+=
+F(u_t,v_t,G_t;\theta),
+\]
+where \(G_t\) is the aggregate GDP signal and \(\theta\) denotes the model
+parameters.
+
+The objective is then no longer merely to reproduce the level of unemployment
+or vacancies at each date, but rather to reproduce the \emph{local flow field}
+of the labor market in Beveridge space. A natural loss function is
+\[
+\mathcal{L}_{\mathrm{flow}}
+=
+\sum_t
+\left\|
+\begin{pmatrix}
+\Delta u^{\mathrm{sim}}_t \\
+\Delta v^{\mathrm{sim}}_t
+\end{pmatrix}
+-
+\begin{pmatrix}
+\Delta u^{\mathrm{emp}}_t \\
+\Delta v^{\mathrm{emp}}_t
+\end{pmatrix}
+\right\|^2,
+\]
+which directly penalizes the model whenever it predicts the wrong direction,
+magnitude, or persistence of movement through Beveridge space.
+
+More generally, the fitting objective can combine level, geometric, and
+dynamical information:
+\[
+\mathcal{L}
+=
+\lambda_1
+\sum_t
+\left(
+u^{\mathrm{sim}}_t-u^{\mathrm{emp}}_t
+\right)^2
++
+\lambda_2
+\sum_t
+\left(
+v^{\mathrm{sim}}_t-v^{\mathrm{emp}}_t
+\right)^2
++
+\lambda_3
+\sum_t
+d_{\mathrm{BC}}
+\!\left(
+(u^{\mathrm{sim}}_t,v^{\mathrm{sim}}_t),
+(u^{\mathrm{emp}}_t,v^{\mathrm{emp}}_t)
+\right)^2
++
+\lambda_4
+\mathcal{L}_{\mathrm{flow}},
+\]
+where \(d_{\mathrm{BC}}\) denotes a geometric distance in Beveridge space and
+\(\lambda_i\) are weighting parameters.
+
+This approach shifts the fitting target away from static trajectory matching
+and toward reproducing the underlying labor-market adjustment dynamics.
+Importantly, it allows the calibration procedure to distinguish between models
+that merely reproduce average unemployment levels and models that correctly
+capture recession amplification, recovery persistence, Beveridge-curve
+rotation, and hysteresis dynamics.

@@ -1,0 +1,168 @@
+================================================================================
+CALIBRATION PLAN: From Data to Fitted Multi-Industry Dynamics
+================================================================================
+
+Current State
+=============
+- ✅ Empirical macro data: u, v (from JOLTS), GDP growth (2000–2026, monthly)
+- ✅ Existing model code: firm dynamics, matching function m = K·u, power-law C distribution
+- ❌ No calibration: parameters are hand-tuned placeholders
+
+
+PHASE 1: Empirical Time Series Alignment
+=========================================
+Goal: Extract u, v, G from raw data into one aligned DataFrame
+
+Steps:
+  1. Load JOLTS vacancy rate (JOR column) → align to monthly index
+  2. Load BLS unemployment rate (CPS) → monthly index
+  3. Load FRED GDP, compute log-growth, forward-fill quarterly → monthly
+  4. Compute empirical G(t) = [ln(GDP_{t+1}) - ln(GDP_t)] / σ_G, normalize to mean 0, std 0.25
+  5. Produce `empirical_data.csv`: date | u_obs | v_obs | G
+  6. Plot empirical Beveridge curve (u vs v)
+
+Output: Clean monthly time series, 2000–2026
+
+
+PHASE 2: Lightweight Simulator
+==============================
+Goal: Simulator that takes arbitrary time grid, GDP signal, and parameters → u, v trajectories
+
+Design (no dependency on global TIME):
+
+  def simulate_market(
+      time_grid,              # any sampling of time points
+      gdp_signal,             # G(t) values aligned to time_grid
+      n_firms=250,
+      c_distribution="power_law",  # {exponent, c_max, zero_fraction}
+      K=3.5,                  # matching constant (fixed)
+      s=0.01,                 # separation rate (to be estimated)
+      target_u=0.05,
+      seed=42,
+  ) -> (unemployment, vacancy_rate, firms_list)
+
+Steps:
+  1. Initialize labor force L, firm sizes σ, sensitivities C
+  2. Loop: for each time step, update vacancies, match workers, update employment
+  3. Compute u(t) = U(t)/L, v(t) = V(t)/(V+E)
+  4. Return trajectories
+
+Key: Mirrors src/beveridge/firm.py logic but standalone
+
+
+PHASE 3: Loss Function
+======================
+Goal: Quantify fit between simulated and empirical u, v
+
+Define:
+
+  def loss(params, empirical_data, time_grid, gdp_signal):
+      """
+      params = {s, c_max, exponent, zero_fraction}
+
+      Simulate market with these params.
+      Compare simulated vs empirical u and v using:
+        - Mean squared error on levels
+        - Correlation of trajectories
+        - Beveridge curve shape (via histogram binning)
+
+      Return total weighted loss.
+      """
+      u_sim, v_sim = simulate_market(...params...)
+      u_emp, v_emp = empirical_data[...corresponding window...]
+
+      loss_u = MSE(u_sim, u_emp)
+      loss_v = MSE(v_sim, v_emp)
+      loss_corr = -corr(u_sim, v_sim) + corr(u_emp, v_emp)  # match slope
+
+      return loss_u + loss_v + λ * loss_corr
+
+
+PHASE 4: Calibration (Optimization)
+====================================
+Goal: Find (s, C_max, exponent, zero_fraction) that minimize loss
+
+Constraints:
+  - K = 3.5 (fixed from config)
+  - s ∈ [0.005, 0.02] (separation rate, empirically 0.5–2% per month)
+  - c_max ∈ [0.05, 0.15] (demand sensitivity max)
+  - exponent ∈ [1.2, 6.0] (power-law shape)
+  - zero_fraction ∈ [0.1, 0.4] (fraction of GDP-insensitive firms)
+
+Method:
+  - scipy.optimize.minimize (L-BFGS-B with bounds) or Bayesian optimization
+  - 50–100 function evaluations
+  - Parallelize simulator over parameter grid if needed
+
+Output: Optimal parameters, loss trace
+
+
+PHASE 5: Fitted Trajectories
+=============================
+Goal: Produce side-by-side empirical vs simulated plots
+
+Steps:
+  1. Run simulator with optimal parameters
+  2. Plot 6-panel figure:
+     - u(t): empirical vs simulated
+     - v(t): empirical vs simulated
+     - Beveridge curve: empirical vs simulated
+     - Residuals: u_emp - u_sim, v_emp - v_sim
+     - GDP signal G(t) (input)
+     - Hires, separations, vacancies (model internals)
+  3. Compute summary stats:
+     - Mean u, v (empirical vs simulated)
+     - Std u, v
+     - Correlation u–v
+     - AR(1) coefficient of u, v
+     - Cross-correlation u vs v at lags ±6 months
+
+Output: `output/calibration/fitted_trajectories.pdf` + metrics table
+
+
+PHASE 6: Multi-Industry Breakdown (Optional)
+=============================================
+Goal: Extend to sector-level heterogeneity
+
+Steps:
+  1. Segment firms by industry (8 sectors from CES)
+  2. Assign power-law C distribution per sector (may differ)
+  3. Load JOLTS openings + employment by sector
+  4. Calibrate sector-specific s values (if data allows)
+  5. Plot sector-level u vs v trajectories, compare to macro
+
+
+================================================================================
+IMPLEMENTATION SEQUENCE
+================================================================================
+
+Phase | File(s)                              | Dependencies           | Status
+------|--------------------------------------|------------------------|----------
+  1   | src/calibration/empirical.py         | data_fetch, pandas     | To do
+  2   | src/calibration/simulate.py          | numpy, firm.py logic   | To do
+  3   | src/calibration/loss.py              | simulate.py, empirical | To do
+  4   | src/calibration/optimize.py          | scipy.optimize, loss   | To do
+  5   | src/calibration/plotting.py          | matplotlib, optimize   | To do
+  6   | src/calibration/main.py              | all above              | Entry point
+Test | tests/test_calibration.py            | all modules            | Unit + integration
+
+
+================================================================================
+KEY DESIGN DECISIONS
+================================================================================
+
+1. K fixed at 3.5
+   Empirically stable; matching rate per unit time is hard to isolate in
+   discrete data
+
+2. Optimize s separately
+   Empirical separation rate from JOLTS TSR is direct
+
+3. Power-law C for heterogeneity
+   Matches existing model; exponent controls skewness
+
+4. Loss: MSE + correlation
+   Balances level accuracy and cyclical fit
+
+5. Monthly granularity
+   Matches JOLTS/CPS data frequency; resample GDP accordingly

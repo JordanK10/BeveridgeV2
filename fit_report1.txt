@@ -1,0 +1,205 @@
+================================================================================
+FIT REPORT: BeveridgeV2 vs Antoine's Approach
+Generated: 2026-04-07
+Sample window: January 2001 – December 2018 (216 months, matching Antoine)
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. HOW EACH APPROACH IS FIT TO THE DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ANTOINE'S APPROACH
+──────────────────
+Data:
+  - Unemployment + vacancy: us_bev_curve.csv (BLS, monthly, 1951–present)
+  - GDP: GDP_us_long.csv (FRED quarterly, 1947–2025)
+
+GDP pipeline:
+  1. HP-filter quarterly GDP (λ=1600) to extract business cycle component
+  2. Rolling z-score normalization (120-quarter = 30-year window)
+  3. Linear interpolation of quarterly cycle to monthly
+  4. Take time derivative dG/dt; feed this (not G itself) into model
+
+Fitting approach:
+  - HAND-TUNED. No formal optimization.
+  - Parameters chosen by visual inspection of Beveridge curve shape and
+    u/v time series alignment with empirical data.
+  - Fixed parameters: s=0.0084, K=0.5 or 2.0, C_u=2, v0=0.0089, C_v=2
+  - Validation: qualitative match of Beveridge curve loop shape and
+    reproduction of the positive skewness of Δu relative to Δv.
+  - No loss function, no residual computation, no confidence intervals.
+
+OUR APPROACH (BeveridgeV2)
+──────────────────────────
+Data:
+  - Unemployment: BLS CPS API (LNS14000000, monthly)
+  - Vacancies: JOLTS Job Openings Rate (JTS000000000000000JOR, local Excel)
+  - GDP: FRED API (GDPC1, quarterly)
+
+GDP pipeline:
+  1. Linear interpolation of quarterly GDP to monthly (time method)
+  2. 3-month log-difference: G(t) = log(GDP_t) - log(GDP_{t-3})
+  3. Normalize to mean 0, std 0.25
+  (No HP filter; derivative not taken — G enters as level, not rate of change)
+
+Fitting approach:
+  - scipy.optimize.minimize (L-BFGS-B) or differential_evolution
+  - Loss function: weighted sum of MSE(u_sim, u_obs) + MSE(v_sim, v_obs)
+                   + correlation difference + Beveridge shape residual
+  - Free parameters: s, c_max, c_exponent, zero_fraction
+  - Fixed: K=3.5, n_firms=250, dt=1.0
+  - 1000-step burn-in at initial GDP level before simulating
+  - Validation: trajectory plots and diagnostic_summary.txt
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. EMPIRICAL TARGET COMPARISON (same 2001–2018 window)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                        Antoine's data          Our data (JOLTS+BLS)
+                        (us_bev_curve.csv)      (API-fetched)
+                        ──────────────────      ────────────────────
+N (months)              216                     214
+u mean                  0.0611                  0.0613
+u std                   0.0176                  0.0176
+u range                 [0.037, 0.100]          [0.037, 0.100]
+v mean                  0.0282                  0.0305
+v std                   0.0070                  0.0068
+v range                 [0.014, 0.047]          [0.017, 0.048]
+corr(u, v)              −0.778                  −0.747
+skew(u)                 +0.825                  +0.816
+skew(v)                 +0.468                  +0.455
+skew(Δu)                +0.427                  +0.434      ← positive (key)
+skew(Δv)                +0.099                  +0.100      ← near-zero
+Beveridge slope         −0.311                  −0.290
+Beveridge area (×10⁻⁴) 6.14                    7.38
+
+Note: The two datasets are nearly identical in all statistics. The small
+vacancy mean difference (0.028 vs 0.031) reflects a known definitional
+discrepancy: Antoine's series may use a slightly different vacancy definition.
+The key empirical regularities are:
+  (a) Strong negative u-v correlation (~−0.75 to −0.78)
+  (b) Positive skew in Δu (unemployment rises faster than it falls)
+  (c) Near-zero skew in Δv
+  (d) Cross-correlation strongest at k=−6 (u lags v by ~6 months)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. MODEL OUTPUT COMPARISON (all run on 2001–2018 GDP signal)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                        Empirical   Our baseline    Antoine      Antoine
+                        target      (K=3.5,         params       params
+                                    s=0.01,         (K=0.5,      (K=2.0,
+                                    c_max=0.08)     s=0.0084,    s=0.0084,
+                                                    c_max≈0.02)  c_max≈0.02)
+                        ──────────  ────────────    ──────────   ──────────
+u mean                  0.061       0.057           0.067        0.059
+u std                   0.018       0.005 ✗         0.002 ✗      0.002 ✗
+u range                 [.04,.10]   [.05,.08] ✗     [.06,.07] ✗  [.05,.07] ✗
+v mean                  0.031       0.055 ✗         0.211 ✗      0.075 ✗
+v std                   0.007       0.006           0.015 ✗      0.006
+corr(u,v)               −0.747      −0.577 ✗        −0.295 ✗     −0.438 ✗
+skew(u)                 +0.816      +1.842 ✗        +0.667       +0.902
+skew(v)                 +0.455      −4.804 ✗        −12.78 ✗     −10.18 ✗
+skew(Δu)                +0.434      +0.834          +0.985       +0.649
+skew(Δv)                +0.100      −9.957 ✗        −14.42 ✗     −13.72 ✗
+Beveridge slope         −0.29       −0.678 ✗        −2.45 ✗      −1.12 ✗
+Beveridge area (×10⁻⁴) 7.4         10.0            70.0 ✗       21.6 ✗
+
+Key:  ✓ = within 20% of empirical   ✗ = significant deviation
+
+Findings:
+  1. UNEMPLOYMENT VARIANCE: All model variants drastically underestimate the
+     volatility of u. Empirical std(u)=0.018; our baseline gives 0.005. This
+     means the model is not transmitting enough of the GDP signal into u swings.
+     Root cause: c_max=0.08 is too small. With c_max=0.4 (new upper bound),
+     calibration should be able to increase GDP-to-unemployment pass-through.
+
+  2. VACANCY LEVEL: Our baseline v_mean=0.055 is 1.8× the empirical 0.031.
+     Antoine's K=0.5 run gives v=0.21 (7× too high). The vacancy level is
+     determined at steady state by s/(s + K*u). With s=0.01, K=3.5, u=0.06:
+     v_ss ≈ 0.01/(0.01 + 3.5*0.06) = 0.044. To hit v=0.031 with s=0.01,
+     K would need to be ~5.0 or s would need to drop to ~0.006.
+
+  3. VACANCY SKEWNESS: All models produce large negative skew(Δv) while
+     empirical skew(Δv) is near zero (+0.10). This is a systematic model
+     failure likely arising from vacancy posting mechanics: vacancies collapse
+     suddenly when matching absorbs them, creating asymmetric drops.
+
+  4. u-v CORRELATION: Our baseline achieves −0.58, closer to −0.75 target
+     than Antoine's K=0.5 (−0.30) or K=2.0 (−0.44). This is our strongest
+     result so far.
+
+  5. Δu SKEWNESS: All models get the sign right (positive), meaning they
+     reproduce the empirical asymmetry of unemployment rises vs falls.
+     Our baseline (+0.83) is somewhat higher than empirical (+0.43).
+
+  6. ANTOINE'S PARAMETERS IN OUR MODEL: Running s=0.0084, K=0.5 through
+     our agent-based simulator produces vacancy rates of ~21% — completely
+     unrealistic. This is because our matching function m=K*u (linear in u)
+     gives much weaker vacancy absorption than Antoine's bilinear m=K*u*v,
+     so low K fails to clear vacancies. K=2.0 is better (v~7.5%) but still
+     2.4× too high. This confirms that the two models are not directly
+     parameter-comparable.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. RECOMMENDED NEXT STEPS (ordered by expected impact)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1 — Run the calibration optimizer [HIGH PRIORITY]
+  The baseline parameters (c_max=0.08, s=0.01) are known to be off. The
+  optimizer now has access to c_max ∈ [0.05, 0.40] and should be able to
+  find parameters that dramatically improve u variance and corr(u,v).
+  Command: python -m src.calibration.main
+  Expected improvement: std(u) should reach 0.010–0.015, corr(u,v) → −0.70+
+
+STEP 2 — Add skew(Δv) to the loss function [MEDIUM PRIORITY]
+  Currently the loss function targets MSE(u), MSE(v), and corr(u,v). The
+  negative skew(Δv) failure will not be penalized. Adding a term for
+  |skew(Δu) - target_skew_u| + |skew(Δv) - target_skew_v| would push
+  calibration toward fixing the asymmetry.
+
+STEP 3 — Fix the vacancy steady-state level [MEDIUM PRIORITY]
+  The equilibrium vacancy rate is structurally too high. Options:
+    (a) Add K to the calibrated parameters (currently fixed at 3.5).
+        Optimal K is likely 4.5–6.0 to bring v_ss to ~0.031.
+    (b) Allow s to calibrate below 0.005 (current lower bound).
+    (c) Switch matching to bilinear m = K*u*v (Antoine's formulation),
+        which naturally clears vacancies faster without requiring high K.
+
+STEP 4 — Match Antoine's GDP signal construction [LOW–MEDIUM PRIORITY]
+  Our quarterly log-diff G(t) captures business cycles but lacks Antoine's
+  smoothing via HP filter + rolling z-score. The HP filter emphasizes
+  persistent cycles over high-frequency noise. This may improve the temporal
+  structure of u and v responses. However, the HP filter has end-point bias
+  (tested and rejected earlier); could apply it only to the interior of the
+  sample with padding.
+
+STEP 5 — Expand the calibration window [LOW PRIORITY]
+  Antoine's us_bev_curve.csv has data from 1951 onward. Our JOLTS data begins
+  in 2001. Extending back via the BLS Job Openings proxy (pre-JOLTS) would
+  give ~50 years of data, improving identification of s and the C distribution.
+
+STEP 6 — Add Δu and Δv skewness to the diagnostic plots [HOUSEKEEPING]
+  The overlay_comparison.pdf should show histograms of Δu and Δv for both
+  empirical and simulated series, making the skewness gap immediately visible.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Our pipeline has several advantages over Antoine's: formal optimization rather
+than hand-tuning, live data fetching from BLS/JOLTS/FRED, and the ability to
+test heterogeneous firm C distributions. However, we currently underperform
+Antoine's qualitative results on two key dimensions: unemployment variance
+(too damped) and vacancy skewness (wrong sign). Both are tractable with
+calibration (Step 1) and a modified loss function (Step 2). The biggest
+structural question is whether to adopt the bilinear matching function — this
+would make our model more directly comparable to Antoine's and is likely
+necessary to achieve a correct steady-state vacancy rate without requiring
+an unrealistically high K.
+================================================================================

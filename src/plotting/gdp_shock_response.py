@@ -1,82 +1,10 @@
-"""Figures for GDP step-shock relaxation (U, V) and power-law diagnostics."""
+"""Figures for GDP step-shock relaxation (unemployment / vacancy rates) and diagnostics."""
 
 import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import stats
-
-def fit_power_law_decay_window(
-    series,
-    tau0=1.0,
-    tau_min=1,
-    tau_max_exclusive=None,
-):
-    """
-    Fit log|y(τ) - y_end| ≈ a + β log(τ + τ0) over interior τ.
-
-    ``series`` is y(τ) for τ = 0, …, T with y_end = y(T). The last point has
-    zero residual and is excluded; τ=0 is excluded when using log(τ+τ0) with
-    emphasis on decay shape (plan: τ = 1 … T-1).
-
-    Returns (beta, r_squared) or (np.nan, np.nan) if insufficient valid points.
-    """
-    series = np.asarray(series, dtype=float)
-    n = len(series)
-    if n < 3:
-        return np.nan, np.nan
-
-    y_end = series[-1]
-    y = np.abs(series - y_end)
-    tau = np.arange(n, dtype=float)
-
-    if tau_max_exclusive is None:
-        tau_max_exclusive = n - 1
-
-    mask = (tau >= tau_min) & (tau < tau_max_exclusive)
-    y_fit = y[mask]
-    tau_fit = tau[mask]
-
-    positive = y_fit > 0
-    if np.sum(positive) < 3:
-        return np.nan, np.nan
-
-    y_fit = y_fit[positive]
-    tau_fit = tau_fit[positive]
-
-    log_x = np.log(tau_fit + tau0)
-    log_y = np.log(y_fit)
-
-    slope, intercept, r_value, _, _ = stats.linregress(log_x, log_y)
-    return slope, r_value**2
-
-
-def half_life_time_in_window(series, dt, atol=1e-6):
-    """
-    Half-life as time to go halfway from the first sample to the last (window endpoint).
-
-    Let ``m = (x(0) + x(T)) / 2``. If ``x(T) > x(0)``, return the smallest ``tau >= 1``
-    such that ``x(tau) >= m``; if ``x(T) < x(0)``, return the smallest ``tau`` with
-    ``x(tau) <= m``. Time returned is ``tau * dt`` (same units as the simulation clock).
-
-    If ``|x(T)-x(0)| < atol`` or no crossing occurs within the window, returns ``nan``.
-    """
-    x = np.asarray(series, dtype=float)
-    if len(x) < 2:
-        return np.nan
-    x0, x_end = x[0], x[-1]
-    if abs(x_end - x0) < atol:
-        return np.nan
-    midpoint = 0.5 * (x0 + x_end)
-    upward = x_end > x0
-    for tau in range(1, len(x)):
-        if upward:
-            if x[tau] >= midpoint:
-                return float(tau * dt)
-        else:
-            if x[tau] <= midpoint:
-                return float(tau * dt)
-    return np.nan
+from matplotlib.lines import Line2D
 
 
 def plot_gdp_shock_response_figure(
@@ -84,23 +12,67 @@ def plot_gdp_shock_response_figure(
     tau_axis,
     U_by_g,
     V_by_g,
-    beta_U,
-    beta_V,
-    half_life_U,
-    half_life_V,
-    r2_U=None,
-    r2_V=None,
+    ed_gap_by_g,
+    population,
     output_path=None,
-    title="GDP shock response: U, V and power-law exponents",
+    title=r"GDP shock response: $u=U/L$, $v/(v+e)$, and $(D-E)/L$",
+    plot_window_steps=15,
+    tau_centered_shock=None,
+    de_lag_window_by_g=None,
+    v_lag_window_by_g=None,
+    u_lag_window_by_g=None,
 ):
     """
-    2×3 layout: time series | β vs g | half-life vs g for U (row 0) and V (row 1).
+    Two rows × three columns:
 
-    ``tau_axis`` is time since shock (length of each series), e.g. τ * DT.
-    Half-lives are in the same time units as ``tau_axis``.
+    **Row 1** (shared ``tau``): unemployment rate ``u=U/L``, vacancy rate ``v/(v+e)``
+    (:func:`plotting.rates.aggregate_vacancy_rate`), and gap ``(E-D)/L``.
+
+    **Row 2:** **Impulse-style responses** vs ``tau`` (same time axis as row 1): ``Delta u``
+    and ``Delta v`` from ``tau=0`` in the first panel. **Middle panel:** if
+    ``tau_centered_shock``, ``de_lag_window_by_g``, and ``v_lag_window_by_g`` are provided,
+    Pearson **r across post-shock levels** ``g`` between (i) ``(D-E)/L`` at the shock
+    (``tau=0``) and (ii) vacancy rate at each lag ``tau in [-L, L]`` (UV-style lead/lag);
+    plus a second curve with anchor ``Delta(D-E)/L`` from ``tau=-1`` to ``tau=0`` vs
+    ``v(tau)``. Otherwise (legacy) ``Delta(D-E)/L`` and ``Delta v`` vs post-shock ``tau``.
+    **Third panel:** Beveridge-style trace of vacancy rate vs unemployment rate over the
+    post-shock window.
+
+    ``plot_window_steps``: if an integer, only the first ``N`` post-shock samples (same
+    length as the prefix of ``tau_axis``) are plotted; if ``None``, the full series is used.
+
+    ``U_by_g`` / ``V_by_g`` must already be rate series (not level counts).
+    ``ed_gap_by_g`` holds ``(D-E)/L`` (demand minus employment, scaled by labor force).
+
+    Legend for post-shock ``g`` sits outside the Beveridge (bottom-right) panel only, with a
+    large font. ``population`` is labor force ``L``.
     """
-    fig, axs = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
-    fig.suptitle(title, fontsize=14)
+
+    L = float(population)
+    if L <= 0:
+        raise ValueError("population (labor force L) must be positive")
+
+    fig, axs = plt.subplots(2, 3, figsize=(17.5, 9.0), constrained_layout=False)
+    ax_u, ax_v, ax_ed = axs[0, 0], axs[0, 1], axs[0, 2]
+    ax_cuv, ax_cvg, ax_bev = axs[1, 0], axs[1, 1], axs[1, 2]
+
+    for ax in (ax_v, ax_ed):
+        ax.sharex(ax_u)
+
+    use_lag_window = (
+        tau_centered_shock is not None
+        and de_lag_window_by_g is not None
+        and v_lag_window_by_g is not None
+        and u_lag_window_by_g is not None
+        and len(de_lag_window_by_g) == len(g_values)
+        and len(v_lag_window_by_g) == len(g_values)
+        and len(u_lag_window_by_g) == len(g_values)
+    )
+    if not use_lag_window:
+        ax_cuv.sharex(ax_u)
+        ax_cvg.sharex(ax_u)
+
+    fig.suptitle(title, fontsize=14, y=0.97)
 
     cmap = plt.get_cmap("coolwarm")
     g_arr = np.asarray(g_values, dtype=float)
@@ -108,58 +80,124 @@ def plot_gdp_shock_response_figure(
     span = gmax - gmin if gmax > gmin else 1.0
     norm = plt.Normalize(vmin=gmin - 0.05 * span, vmax=gmax + 0.05 * span)
 
+    tau_axis = np.asarray(tau_axis, dtype=float)
+    T_full = int(tau_axis.size)
+    if T_full < 1:
+        raise ValueError("tau_axis must be non-empty")
+    if plot_window_steps is None:
+        n_plot = T_full
+    else:
+        n_plot = min(int(plot_window_steps), T_full)
+        if n_plot < 1:
+            raise ValueError("plot_window_steps must be >= 1 when set")
+    tau_plot = tau_axis[:n_plot]
+
     for j, g in enumerate(g_values):
         color = cmap(norm(g))
-        axs[0, 0].plot((tau_axis), np.log(U_by_g[j]), color=color, label=f"g={g:.2f}", linewidth=1.2, alpha=0.9)
-        axs[1, 0].plot((tau_axis), np.log(V_by_g[j]), color=color, label=f"g={g:.2f}", linewidth=1.2, alpha=0.9)
+        u_full = np.asarray(U_by_g[j], dtype=float).ravel()
+        v_full = np.asarray(V_by_g[j], dtype=float).ravel()
+        edr_full = np.asarray(ed_gap_by_g[j], dtype=float).ravel()
+        if u_full.size < n_plot or v_full.size < n_plot or edr_full.size < n_plot:
+            raise ValueError(
+                f"Series length for g index {j} must be >= plot window ({n_plot}); "
+                f"got len(u)={u_full.size}, len(v)={v_full.size}, len(gap)={edr_full.size}"
+            )
+        u = u_full[:n_plot]
+        v = v_full[:n_plot]
+        edr = edr_full[:n_plot]
+        ax_u.plot(tau_plot, u, color=color, linestyle="-", linewidth=1.2, alpha=0.9)
+        ax_v.plot(tau_plot, v, color=color, linestyle="-", linewidth=1.2, alpha=0.9)
+        ax_ed.plot(tau_plot, edr, color=color, linewidth=1.2, alpha=0.9)
+        ax_bev.plot(u, v, color=color, linewidth=1.2, alpha=0.9)
 
-    axs[0, 0].set_title(r"$U(t)$ after shock (aggregate)")
-    axs[0, 0].set_xlabel(r"Time since shock ($\tau$)")
-    axs[0, 0].set_ylabel("$ln(U)$")
-    axs[0, 0].grid(True, alpha=0.3)
-    axs[0, 0].legend(fontsize=7, ncol=2, loc="best")
+    ax_u.set_ylabel(r"Unemployment rate $u=U/L$", color="C0")
+    ax_u.tick_params(axis="y", labelcolor="C0")
+    ax_u.set_title(r"Unemployment rate $u$")
+    ax_u.grid(True, alpha=0.3)
 
-    axs[1, 0].set_title(r"$V(t)$ after shock (aggregate)")
-    axs[1, 0].set_xlabel(r"Time since shock ($\tau$)")
-    axs[1, 0].set_ylabel("$ln(V)$")
-    axs[1, 0].grid(True, alpha=0.3)
-    axs[1, 0].legend(fontsize=7, ncol=2, loc="best")
+    ax_v.set_ylabel(r"Vacancy rate $v/(v+e)$", color="C1")
+    ax_v.tick_params(axis="y", labelcolor="C1")
+    ax_v.set_title(r"Vacancy rate $v/(v+e)$")
+    ax_v.grid(True, alpha=0.3)
 
-    valid_U = np.isfinite(beta_U)
-    valid_V = np.isfinite(beta_V)
-    hl_U_arr = np.asarray(half_life_U, dtype=float)
-    hl_V_arr = np.asarray(half_life_V, dtype=float)
-    valid_hl_U = np.isfinite(hl_U_arr)
-    valid_hl_V = np.isfinite(hl_V_arr)
+    ax_ed.set_title(r"Demand gap $(\hat{d}-e)/L = (D-E)/L$")
+    ax_ed.set_ylabel(r"$(D - E) / L$")
+    ax_ed.axhline(0.0, color="0.45", linestyle=":", linewidth=0.9)
+    ax_ed.grid(True, alpha=0.3)
 
+    line_legend = [
+        Line2D([0], [0], color="0.25", linestyle="-",  linewidth=1.4, label=r"$u=U/L$"),
+        Line2D([0], [0], color="0.25", linestyle="--", linewidth=1.4, label=r"$v/(v+e)$"),
+        Line2D([0], [0], color="0.25", linestyle=":",  linewidth=1.4, label=r"$(D-E)/L$"),
+    ]
 
+    def _plot_shock_panel(ax, indices, title):
+        if use_lag_window:
+            tau_cs = np.asarray(tau_centered_shock, dtype=float)
+            for j in indices:
+                color = cmap(norm(float(g_values[j])))
+                u_c  = np.asarray(u_lag_window_by_g[j],  dtype=float)
+                v_c  = np.asarray(v_lag_window_by_g[j],  dtype=float)
+                de_c = np.asarray(de_lag_window_by_g[j], dtype=float)
+                ax.plot(tau_cs, u_c,  color=color, linestyle="-",  linewidth=1.2, alpha=0.9)
+                ax.plot(tau_cs, v_c,  color=color, linestyle="--", linewidth=1.2, alpha=0.9)
+                ax.plot(tau_cs, de_c, color=color, linestyle=":",  linewidth=1.2, alpha=0.9)
+            ax.set_xlim(tau_cs[0], tau_cs[-1])
+        ax.set_title(title)
+        ax.set_ylabel("Rate")
+        ax.set_xlabel(r"$\tau$ (time; $0$ = shock)")
+        ax.axvline(0.0, color="0.45", linestyle=":", linewidth=0.8)
+        ax.axhline(0.0, color="0.45", linestyle=":", linewidth=0.8)
+        ax.grid(True, alpha=0.3)
+        ax.legend(handles=line_legend, loc="upper right", fontsize=8, framealpha=0.92)
 
-    axs[0, 1].scatter(g_arr[valid_hl_U], hl_U_arr[valid_hl_U], c="C0", s=36, zorder=3, marker="s", alpha=0.85)
-    axs[0, 1].set_title(r"Half-life $U$: time to midpoint of $U(0)\to U(T)$")
-    axs[0, 1].set_xlabel(r"Post-shock signal $g$")
-    axs[0, 1].set_ylabel("Half-life (time units)")
-    axs[0, 1].grid(True, alpha=0.3)
+    neg_idx = [j for j, g in enumerate(g_values) if float(g) < 0]
+    pos_idx = [j for j, g in enumerate(g_values) if float(g) > 0]
 
-    axs[1, 1].scatter(g_arr[valid_hl_V], hl_V_arr[valid_hl_V], c="C1", s=36, zorder=3, marker="s", alpha=0.85)
-    axs[1, 1].set_title(r"Half-life $V$: time to midpoint of $V(0)\to V(T)$")
-    axs[1, 1].set_xlabel(r"Post-shock signal $g$")
-    axs[1, 1].set_ylabel("Half-life (time units)")
-    axs[1, 1].grid(True, alpha=0.3)
+    _plot_shock_panel(ax_cuv, neg_idx, r"Negative shocks: $u$, $v/(v+e)$, $(D-E)/L$")
+    _plot_shock_panel(ax_cvg, pos_idx, r"Positive shocks: $u$, $v/(v+e)$, $(D-E)/L$")
 
-    if r2_U is not None and np.any(np.isfinite(r2_U)):
-        axs[0, 1].text(
-            0.02,
-            0.98,
-            "Note: true relaxation near a fixed point is often exponential;\n"
-            r"log–log $R^2$ can be low. See docstring in experiments.",
-            transform=axs[0, 1].transAxes,
-            fontsize=7,
-            verticalalignment="top",
-        )
+    ax_bev.set_title(
+        r"Beveridge trace: $v/(v+e)$ vs $u$ ($\tau$ along path"
+        + (rf", first {n_plot} steps)" if n_plot < T_full else r")")
+    )
+    ax_bev.set_xlabel(r"Unemployment rate $u$")
+    ax_bev.set_ylabel(r"Vacancy rate $v/(v+e)$")
+    ax_bev.grid(True, alpha=0.3)
+
+    h_leg = [
+        Line2D([0], [0], color=cmap(norm(g)), linestyle="-", linewidth=2.5, label=f"{g:.2f}")
+        for g in g_values
+    ]
+    leg_bev = ax_bev.legend(
+        handles=h_leg,
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        bbox_transform=ax_bev.transAxes,
+        borderaxespad=0.0,
+        fontsize=12,
+        title_fontsize=13,
+        ncol=1,
+        frameon=True,
+        title=r"Post-shock $g$",
+    )
+
+    ax_v.set_xlabel(r"Time since shock ($\tau$)", fontsize=11)
+
+    fig.subplots_adjust(
+        left=0.06, right=0.80, top=0.92, bottom=0.07, wspace=0.14, hspace=0.18
+    )
+
+    extra = (leg_bev,)
 
     if output_path:
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-        fig.savefig(output_path, dpi=150)
+        fig.savefig(
+            output_path,
+            dpi=150,
+            bbox_extra_artists=extra,
+            bbox_inches="tight",
+        )
         plt.close(fig)
     else:
         plt.show()
@@ -169,6 +207,6 @@ def plot_gdp_shock_response_figure(
 
 def default_shock_g_grid():
     """Post-shock constant G levels: 0.4 … 0.1 and -0.1 … -1.0."""
-    pos = [0.4, 0.3, 0.2, 0.1, .6, .8, 1, 1.3, 1.6,2]
-    neg = [-.1,-.3,-.5]
+    pos = [0.4, 0.3, 0.2, 0.1]
+    neg = [-.1, -.3, -.5,-1]
     return np.sort(pos + neg)

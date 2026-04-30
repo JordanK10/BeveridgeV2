@@ -9,19 +9,19 @@ import pandas as pd
 
 MAX_LAG_STEPS = 50
 
-from plotting.rates import compute_rates
+from plotting.rates import aggregate_vacancy_rate, compute_rates
 from plotting.beveridge_figs import (
     plot_aggregate_overview,
     plot_beveridge_comparison,
     plot_efficiency_time_series,
     plot_multi_employment,
+    plot_multi_firm_signal_gap_scatters,
+    plot_multi_firm_skewness_bars,
     plot_response_to_demand,
     plot_vacancy_time_series,
 )
 from plotting.gdp_shock_response import (
     default_shock_g_grid,
-    fit_power_law_decay_window,
-    half_life_time_in_window,
     plot_gdp_shock_response_figure,
 )
 from plotting.uv_crosscorr import (
@@ -776,6 +776,26 @@ def run_multi_firm_simulation(
     plot_efficiency_time_series(firms, TIME, economy_name, output_dir=output_dir)
     plot_aggregate_overview(signal_series, firms, unemployment, TIME, population, economy_name, output_dir=output_dir)
     plot_vacancy_time_series(firms, TIME, economy_name, output_dir=output_dir)
+    plot_multi_firm_signal_gap_scatters(
+        signal_series,
+        firms,
+        unemployment,
+        aggregate_vacancies,
+        population,
+        economy_name,
+        output_dir=output_dir,
+        burn_in=config.BURN_IN,
+    )
+    plot_multi_firm_skewness_bars(
+        signal_series,
+        firms,
+        unemployment,
+        aggregate_vacancies,
+        population,
+        economy_name,
+        output_dir=output_dir,
+        burn_in=config.BURN_IN,
+    )
 
     plot_fluctuation_analysis(
         signal_series,
@@ -808,6 +828,8 @@ def run_multi_firm_simulation(
     print(f"- efficiency_timeseries_{economy_name}.pdf")
     print(f"- aggregate_overview_{economy_name}.pdf")
     print(f"- vacancy_timeseries_{economy_name}.pdf")
+    print(f"- signal_gap_scatters_{economy_name}.pdf")
+    print(f"- skewness_bars_{economy_name}.pdf")
     print(f"- fluctuation_analysis_{economy_name}.pdf")
     print(f"- c_distribution_{economy_name}.pdf")
 
@@ -827,21 +849,19 @@ def run_gdp_shock_response_experiment(
     base_seed=4242,
 ):
     """
-    GDP_shock_response: burn-in at G=0, step to constant g, then analyze U,V.
+    GDP_shock_response: burn-in at G=0, step to constant g, then plot post-shock windows.
 
     Uses an envelope signal with G=-1 everywhere for ``initialize_economy`` so
     stability checks use the worst-case g in the default grid. Each run uses a
     piecewise G(t) with the actual path.
 
-    Power-law fit (see plan): for τ = 1 … post_shock_steps-1,
-    log|U(τ)-U_end| vs log(τ+1); same for V. End of window is U at τ=post_shock_steps.
-    Relaxation near a fixed point is often exponential; low R² is expected.
+    Figure: unemployment rate ``u = U/L`` and vacancy rate ``v/(v+e)`` vs time since shock,
+    and ``(D-E)/L`` vs time, with ``E = L - U``, ``D = \\hat{e}`` (firm target demand),
+    ``L`` = labor force.
 
-    Half-life: first time (in simulation time) the series crosses the midpoint between
-    the first and last sample in the post-shock window (see ``half_life_time_in_window``).
-
-    Returns dict with arrays: g_values, U_window, V_window, beta_U, beta_V, r2_U, r2_V,
-    half_life_U, half_life_V.
+    Returns dict with ``g_values``, ``U_window`` (``u`` series), ``V_window`` (``v/(v+e)``),
+    ``ed_gap_window`` (actually ``(D-E)/L``; key name kept for compatibility), ``tau_axis``,
+    and metadata keys.
     """
     if output_dir is None:
         output_dir = os.path.join(config.OUTPUT_DIR, "gdp_shock_response")
@@ -854,6 +874,14 @@ def run_gdp_shock_response_experiment(
         g_values = default_shock_g_grid()
 
     i_shock = int(burn_in_steps)
+    pre_shock_lag = 3
+    post_shock_lag = 15
+    i_lo_cc = i_shock - pre_shock_lag
+    if i_lo_cc < 0:
+        raise ValueError(
+            f"burn_in_steps ({burn_in_steps}) must be >= pre_shock_lag ({pre_shock_lag}) "
+            "to build τ ∈ [-3, 15] around the shock."
+        )
     window_len = int(post_shock_steps) + 1
     i_end = i_shock + post_shock_steps
     if i_end >= STEPS:
@@ -885,12 +913,14 @@ def run_gdp_shock_response_experiment(
 
     U_by_g = []
     V_by_g = []
-    beta_U = []
-    beta_V = []
-    r2_U = []
-    r2_V = []
-    half_life_U = []
-    half_life_V = []
+    ed_gap_by_g = []
+    de_lag_window_by_g = []
+    v_lag_window_by_g = []
+    u_lag_window_by_g = []
+    i_hi_excl_cc = i_shock + post_shock_lag + 1
+    tau_centered = (
+        np.arange(-pre_shock_lag, post_shock_lag + 1, dtype=float) * DT
+    )
 
     for k, g in enumerate(g_values):
         g = float(g)
@@ -920,21 +950,40 @@ def run_gdp_shock_response_experiment(
             [sum(f.vacancies[i] for f in firms) for i in range(i_shock, i_shock + window_len)],
             dtype=float,
         )
+        firm0 = firms[0]
+        D_win = np.asarray(
+            [firm0.employment_demand[i] for i in range(i_shock, i_shock + window_len)],
+            dtype=float,
+        )
+        E_win = float(population) - U_win
+        # (D - E) / L: positive when target demand exceeds employment (aligned with +G shock).
+        de_gap_win = (D_win - E_win) / float(population)
 
-        bu, ru = fit_power_law_decay_window(U_win, tau0=1.0, tau_min=1, tau_max_exclusive=window_len - 1)
-        bv, rv = fit_power_law_decay_window(V_win, tau0=1.0, tau_min=1, tau_max_exclusive=window_len - 1)
+        Lf = float(population)
+        u_rate_win = U_win / Lf
+        v_rate_win = aggregate_vacancy_rate(U_win, V_win, population)
 
-        hlu = half_life_time_in_window(U_win, DT)
-        hlv = half_life_time_in_window(V_win, DT)
+        U_by_g.append(np.asarray(u_rate_win, dtype=float))
+        V_by_g.append(np.asarray(v_rate_win, dtype=float))
+        ed_gap_by_g.append(de_gap_win)
 
-        U_by_g.append(U_win)
-        V_by_g.append(V_win)
-        beta_U.append(bu)
-        beta_V.append(bv)
-        r2_U.append(ru)
-        r2_V.append(rv)
-        half_life_U.append(hlu)
-        half_life_V.append(hlv)
+        U_c = np.asarray(unemployment[i_lo_cc:i_hi_excl_cc], dtype=float)
+        V_c = np.asarray(
+            [sum(f.vacancies[i] for f in firms) for i in range(i_lo_cc, i_hi_excl_cc)],
+            dtype=float,
+        )
+        D_c = np.asarray(
+            [firm0.employment_demand[i] for i in range(i_lo_cc, i_hi_excl_cc)],
+            dtype=float,
+        )
+        E_c = float(population) - U_c
+        de_c = (D_c - E_c) / float(population)
+        v_rate_c = aggregate_vacancy_rate(U_c, V_c, population)
+
+        u_rate_c = U_c / float(population)
+        de_lag_window_by_g.append(np.asarray(de_c, dtype=float))
+        v_lag_window_by_g.append(np.asarray(v_rate_c, dtype=float))
+        u_lag_window_by_g.append(np.asarray(u_rate_c, dtype=float))
 
     tau_axis = np.arange(window_len, dtype=float) * DT
     out_path = os.path.join(output_dir, "gdp_shock_response_U_V.pdf")
@@ -944,14 +993,14 @@ def run_gdp_shock_response_experiment(
         tau_axis,
         U_by_g,
         V_by_g,
-        np.array(beta_U),
-        np.array(beta_V),
-        np.array(half_life_U),
-        np.array(half_life_V),
-        r2_U=np.array(r2_U),
-        r2_V=np.array(r2_V),
+        ed_gap_by_g,
+        population=population,
         output_path=out_path,
-        title="GDP shock response: aggregate U, V, power-law exponents, and half-lives",
+        title=r"GDP shock response: $u=U/L$, $v/(v+e)$, and $(D-E)/L$",
+        tau_centered_shock=tau_centered,
+        de_lag_window_by_g=de_lag_window_by_g,
+        v_lag_window_by_g=v_lag_window_by_g,
+        u_lag_window_by_g=u_lag_window_by_g,
     )
 
     print(f"Saved GDP shock response figure to {out_path}")
@@ -960,13 +1009,11 @@ def run_gdp_shock_response_experiment(
         "g_values": list(g_values),
         "U_window": U_by_g,
         "V_window": V_by_g,
-        "beta_U": np.array(beta_U),
-        "beta_V": np.array(beta_V),
-        "r2_U": np.array(r2_U),
-        "r2_V": np.array(r2_V),
-        "half_life_U": np.array(half_life_U),
-        "half_life_V": np.array(half_life_V),
+        "ed_gap_window": ed_gap_by_g,
         "tau_axis": tau_axis,
+        "tau_centered_shock": tau_centered,
+        "de_lag_window_by_g": de_lag_window_by_g,
+        "v_lag_window_by_g": v_lag_window_by_g,
         "burn_in_steps": burn_in_steps,
         "post_shock_steps": post_shock_steps,
         "figure_path": out_path,

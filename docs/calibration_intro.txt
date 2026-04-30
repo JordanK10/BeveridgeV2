@@ -1,0 +1,31 @@
+Data Integration and Calibration: An Overview
+
+The Beveridge model developed in this document represents a significant departure from purely theoretical exercises---it is grounded in empirical labor market realities and calibrated against observable US data. This appendix documents the current state of data integration and model calibration as of April 2026, providing transparency about what has been accomplished, what remains incomplete, and a roadmap for future improvements.
+
+The task of calibrating a multi-agent labor market model presents distinct challenges. Unlike reduced-form empirical models that directly regress observables onto outcomes, our structural approach requires matching the joint distribution of unemployment, vacancies, and their co-movements---the Beveridge curve---alongside higher moments like skewness that capture the asymmetry between sharp recessions and gradual recoveries. This requires both aggregate time-series data and careful attention to how model parameters translate into empirical moments.
+
+Current Data Integration Status
+
+We have successfully integrated three core datasets that anchor the model to US labor market reality. The unemployment rate (Bureau of Labor Statistics, Civilian Labor Force Survey) provides monthly observations from 2000 onwards, with a historical range of 1.6% to 10.0%. The job openings rate comes from the Job Openings and Labor Turnover Survey (JOLTS), covering December 2000 to present, with an empirical mean near 3.1%. Real GDP data from the Federal Reserve Economic Data (FRED) system, available quarterly since 1947 and downsampled to monthly via interpolation, serves as the macroeconomic signal driving firm demand fluctuations. These three series form the backbone of our empirical calibration target.
+
+In addition to empirical data, we employ synthetic datasets for controlled experiments. An AR(2) process with calibrated mean growth (2%), persistence ($\phi_1=0.8, \phi_2=0.1$), and negative skewness ($\alpha=-1.0$) mimics the statistical properties of US GDP growth, including its characteristic asymmetry. A simpler sine-wave signal provides a baseline for model diagnostics when empirical complexity must be stripped away.
+
+Model Performance and Current Calibration
+
+The model achieves reasonable fidelity on several dimensions. The simulated unemployment rate averages 5.8%, within 5% of the empirical target of 6.1%. The unemployment volatility has improved to 1.2% standard deviation. Unemployment skewness in first differences ($\Delta u$) is nearly exact at 0.445 simulated versus 0.447 empirical---a striking success that suggests the model captures the nonlinear dynamics of labor market adjustment.
+
+However, challenges remain. The Beveridge correlation (the negative association between $u$ and $v$) is underestimated: the model achieves $-0.517$ versus an empirical target of $-0.747$. Vacancy levels run about 6% above target. Most problematically, the simulated vacancy rate exhibits a negative skewness ($-0.613$) opposite in sign to the empirical positive skewness ($+0.455$), and the skewness of vacancy changes ($\Delta v$) is far too negative. This sign error likely stems from the vacancy hard floor at zero: when firms cannot post negative vacancies, the distribution becomes skewed toward the lower bound during downturns.
+
+The fundamental tension underlying these discrepancies is architectural. The matching rate $m = K u$ is linear in unemployment and independent of vacancy supply. Increasing the matching constant $K$ brings vacancy levels and recovery speed closer to targets but exacerbates the sign problem in vacancy skewness. Conversely, decreasing $K$ improves skewness but makes recoveries implausibly slow. This suggests that a more nuanced matching function---perhaps incorporating a dependence on vacancy tightness $m = K u^\eta v^{1-\eta}$---may be necessary to resolve the tension between level and shape moments simultaneously.
+
+Calibration Approach and Gaps
+
+The current calibration uses a parameter sweep combined with manual fitting rather than automated optimization. Core parameters are held fixed: $K=3.5$ (per unit time with $\Delta t=1$), $\pi=1$ normalized, $\theta=0$ for instantaneous firing. Hand-tuned parameters include the separation rate ($s=0.01$), maximum sensitivity ($C_{\max}=0.08$), power-law exponent ($\alpha=2.0$), fraction of GDP-insensitive firms ($f_0=0.25$), and idiosyncratic shock volatility ($\sigma_\eta=0.01$).
+
+Four critical gaps limit calibration progress. First, an automated optimization framework does not exist; parameter choices remain partly subjective despite being grounded in intuition. Second, disaggregated sector-level JOLTS data have been downloaded but not yet integrated, preventing validation of the heterogeneity hypothesis at finer sectoral resolution. Third, the loss function currently includes only level terms (mean squared error) and the Beveridge correlation; adding explicit terms for skewness would help diagnose and potentially correct the vacancy skewness problem. Fourth, real-time data remain frozen at December 2018, limiting the model's relevance to 2026 labor market conditions.
+
+Looking Forward
+
+The recommended near-term action plan (2 weeks, 8--10 hours) focuses on building an automated optimization loop using global optimization techniques (differential evolution) while enriching the loss function with skewness penalties. Medium-term work (2--4 weeks) prioritizes sector-level data integration and exploration of alternative matching specifications. Longer-term extensions (1--2 months) include real-time data pipelines and cross-sectional validation against firm-level datasets.
+
+This foundation positions the model to move beyond hand-tuned parameter sets toward a reproducible, objective calibration procedure that can be updated as new data arrive and alternative model specifications are tested.

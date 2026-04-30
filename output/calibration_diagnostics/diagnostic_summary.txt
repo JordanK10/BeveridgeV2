@@ -1,0 +1,25 @@
+DIAGNOSTIC SUMMARY
+======================================================================
+
+EMPIRICAL DATA (JOLTS JOR + BLS CPS + FRED GDP)
+  Time span: 2010-01-01 to 2026-02-01 (193 months)
+  u: mean=0.0569, std=0.0219, range=[0.0340, 0.1480]
+  v: mean=0.0416, std=0.0129, range=[0.0200, 0.0750]
+  u-v correlation: -0.6757
+  skew(u): 1.1207,  skew(v): 0.6188
+  skew(Δu): 10.9611,  skew(Δv): -0.2090
+
+SIMULATED (BASELINE PARAMETERS)
+  Parameters: K=2.31 (t_half=6mo), s=0.0043, c_max=0.15, c_exponent=1.2, zero_fraction=0.0625, firing_threshold=0.10, n_firms=250
+  u: mean=0.0557, std=0.0038, range=[0.0462, 0.0636]
+  v: mean=0.0538, std=0.0059, range=[0.0000, 0.0668]
+  u-v correlation: -0.2539
+  skew(u): -0.0522,  skew(v): -3.8221
+  skew(Δu): 0.2828,  skew(Δv): -8.8067
+
+GAPS (EMPIRICAL - SIMULATED)
+  Δ(mean u): +0.0013
+  Δ(mean v): -0.0122
+  Δ(std u):  +0.0181
+  Δ(std v):  +0.0070
+  Δ(corr):   -0.4218

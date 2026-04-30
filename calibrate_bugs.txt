@@ -1,0 +1,158 @@
+CALIBRATION BUGS — src/calibration/simulate.py audit
+======================================================
+
+Date: 2026-04-27
+Context: Fits hit boundary on every basin (K=5.0, c_exponent=0.5/10.0, idio_std at lower bound).
+Audit traces every parameter from fit.py → simulate_market → SimpleCalibFirm.
+
+
+Bug 1 (HIGH): u(0) ≠ target_u in practice
+-------------------------------------------
+Location: simulate.py:186 (simulate_market) and simulate.py:313 (simulate_market_with_firms)
+
+    init_emp_per_firm = L * (1.0 - target_u) / n_firms
+
+L = baseline_employment / (1 - target_u) = (n_firms * base_sigma) / (1 - target_u),
+so init_emp_per_firm = base_sigma. Each firm starts at e = σ.
+Total employment(0) = n_firms * σ = baseline_employment, giving u(0) = target_u — correct on paper.
+
+But the burn-in then runs deterministic dynamics from e=σ for all firms while the
+target is d = σ*(1 + c*G[0]). For c>0 firms with positive G[0], demand exceeds σ.
+There is no slack pool: total demand Σσ(1+cG) > Σσ = L*(1-target_u). Firms compete
+for fewer workers than they want. After 5 burn-in steps, u depends on c and K but
+is not target_u. The "u starts at empirical first month" claim is approximate.
+
+Why it matters: target_u was added precisely to pin the labour-market starting state
+to the data. The current init does not actually achieve this once the burn-in runs.
+
+
+Bug 2 (HIGH): AR(1) noise dominates GDP signal by ~7×
+------------------------------------------------------
+Location: simulate.py:38 (SimpleCalibFirm.compute_demand)
+
+    eta[t] = 0.9 * eta[t-1] + rng.normal(0, idio_std)
+
+Long-run std of η = idio_std / sqrt(1 - 0.9²) ≈ 2.29 × idio_std.
+At idio_std = 0.06, std(η) ≈ 0.137 — each firm's demand swings ±13.7% from noise alone.
+GDP-driven term: c · G ≈ 10 · 0.002 = 0.02 (~7× smaller than typical η).
+
+Why it matters: the model literally cannot see GDP under idiosyncratic noise.
+This explains why optimizer drives idio_std to its lower bound (0.001) for the
+dynamics objectives — those objectives prefer "be as quiet as possible" because
+matching empirical Δu/Δv is impossible when noise dominates.
+
+The 0.9 AR(1) coefficient is hardcoded and not exposed as a parameter.
+
+
+Bug 3 (HIGH): η is not warm-started
+------------------------------------
+Location: simulate.py:36-38
+
+    eta = np.zeros(n)            # eta[0] = 0 always
+    for t in range(1, n):
+        eta[t] = 0.9 * eta[t-1] + ...
+
+Each firm gets a fresh RNG via seed=seed+i. η starts at 0 for every firm and only
+reaches its steady-state distribution after ~10 months (1/(1-0.9) ≈ 10 mixing time).
+Early-sample dynamics are systematically too quiet, biasing the fit window's
+opening period.
+
+Fix: warm-start η by running a few hundred AR(1) steps before t=0, or sample
+eta[0] from the steady-state distribution N(0, idio_std/sqrt(0.19)).
+
+
+Bug 4 (HIGH): firing_threshold formula does not match docstring
+----------------------------------------------------------------
+Location: simulate.py:64-90 (SimpleCalibFirm.update_employment) and similar code in
+both burn-in blocks (simulate.py:218, simulate.py:333)
+
+Docstring claim: "fire if (e - ê)/ê > α"
+
+Code:
+    theta = firing_threshold * employment[t] / demand   # = α * e / d
+    if excess > theta:                                  # i.e. e - d > α*e/d
+        firing = excess - theta
+
+This rearranges to (e - d)/e > α/d, which has units of 1/workers (e and d are in
+worker counts ~300). With firing_threshold=0.1, e≈d≈300:
+    theta = 0.1 * 300 / 300 = 0.1 absolute workers
+Firms fire whenever they overshoot demand by >0.1 workers — essentially zero deadband.
+
+Intended (matches docstring):
+    theta = firing_threshold * demand            # absolute deadband in workers
+    fire if (e - d) > theta                      # equivalently (e - d)/d > α
+
+Why it matters: firing_threshold is currently a no-op when set to 0.1 — firms
+fire on virtually every step. K and c_exponent get less leverage on dynamics
+because the firing channel is always at the rail.
+
+
+Bug 5 (MEDIUM): simulate_market_with_firms has different defaults from simulate_market
+---------------------------------------------------------------------------------------
+Location: simulate.py:96-112 vs simulate.py:277-287
+
+simulate_market defaults vs simulate_market_with_firms defaults:
+    c_max:            0.3   vs 1.0
+    zero_fraction:    0.0625 vs 0.5
+    s:                0.03  vs 0.01
+    burn_in_steps:    5     vs 1000
+    firing_threshold: 0.025 vs 0.0
+    idio_std:         0.05  (same)
+
+Both fit.py and fit_plots.py currently pass every parameter explicitly, so the
+mismatch is latent — but if any future caller uses defaults, the two functions
+will silently produce different simulations.
+
+Fix: extract the simulation core into a shared helper and call it from both
+public functions, or unify the defaults.
+
+
+Bug 6 (MEDIUM): hiring_efficiency is accepted but unused
+---------------------------------------------------------
+Location: simulate.py:78
+
+    # hires = hiring_efficiency * self.vacancies[t] * m * dt  # φ-scaled (disabled)
+    hires = self.vacancies[t] * m * dt
+
+The kwarg is accepted by the function signature and the docstring describes its
+behaviour, but the φ-scaled line is commented out. Calls passing
+hiring_efficiency=0.5 (or any value) are silently ignored.
+
+Fix: either remove the kwarg entirely, or restore the φ-scaling.
+
+
+Bug 7 (LOW): time_array is only used for length
+-------------------------------------------------
+Location: simulate.py:149
+
+    T = len(time_array)
+
+The actual values in time_array are never read — only its length. The simulator
+treats every step as having duration `dt` (a separate scalar). Passing an
+irregular time grid does nothing different from passing np.arange(T).
+
+Not a bug per se, but the parameter name is misleading.
+
+
+Bug 8 (LOW): base_sigma is hardcoded
+-------------------------------------
+Location: simulate.py:166 and simulate.py:298
+
+    base_sigma = 300.0
+
+This cancels out in unemployment- and vacancy-rate calculations, so it does not
+affect the fit. But it is a magic number that should either be a parameter or
+documented as "arbitrary scale that cancels in rates."
+
+
+Priority for fixing
+-------------------
+The bugs that most plausibly explain the fit hitting boundaries:
+
+  Bug 4 (firing_threshold formula): firing channel is pinned, removing leverage.
+  Bug 2 (AR(1) noise dominates):    GDP signal is invisible under noise.
+  Bug 3 (η not warm-started):       opening of fit window is systematically off.
+
+Fix Bug 4 first (one-line correction, clear semantics), then Bug 2 by either
+exposing the AR(1) coefficient as a parameter or reducing it (e.g. to 0.5 or 0.7)
+so noise persistence does not amplify idio_std beyond the GDP signal.

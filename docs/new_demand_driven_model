@@ -1,0 +1,96 @@
+\section{Derivation of the objective function}
+
+A firm $i$ is characterized by its number of employees $e_i$ and the average productivity per employee, $\pi_i$. 
+Assume for simplicity that the production function of the firm is linear w.r.t. labor, i.e. proportional to the number of employees, so that the dollar value of what the firm produces is $\pi_i e_i$.  Let's also assume that the costs are proportional to the number of workers with proportionality constant $w_i$, i.e. 
+the firm's labor cost is $c_i=w_ie_i$, where $w_i$ is the wage (which for convenience we will assume is the same for all employees).  There may be others costs as well, but to keep the notation simple let's assume for now that they scale linearly with the number of workers and are included in $w_i$, and that there are no other costs.
+
+Assume that at any given time the demand for the firms good is $D_i$.  In the ideal case the firm has exactly the right amount of workers to satisfy the demand, $D_i = e_i \pi_i$, but in general there may be a mismatch.  If there are too many workers then the firm pays for more labor than it needs, and if there are not enough workers then the firm pays an opportunity cost because it is not able to produce enough to satisfy the full demand.  The firm's revenue $r_i=min(D_i,p_i)$ and its profit $\Pi_i$ is
+\begin{eqnarray}
+    &\Pi_i=r_i-c_i = min(D_i,\pi_i e_i) - w_i e_i.
+\end{eqnarray}
+Since all terms are indexed by $i$, we will drop it for the moment.
+
+The optimal number of workers is $D/\pi$.  The firm's lost profit $\Delta \Pi \le 0$ is the difference between the profit it makes with its actual number of workers and the profit it would have made with the optimal number of workers.  When it has the optimal number of workers, $\pi e = D$ and $\Delta \Pi = 0$.  When it has too many workers, $\pi e > D$, and
+$$\Delta \Pi = D - w e  -(D - w D/\pi) = w (D/\pi - e),$$
+and when it has too few workers,  $\pi e < D$, 
+$$\Delta \Pi = \pi e - w e  - (D - w D/\pi) = e (\pi - w)  - D (1 - w/\pi).$$
+Note that if $w = \pi$, the firm makes no profits, even with the optimal number of workers.  In this case, when there are too many workers, $\Delta \Pi =  D - \pi e < 0$, but when there are too few workers, $\Delta \Pi = 0$, independent of the worker imbalance.   This means that the firm loses money when it has more workers than it needs, but when it has too few workers, the loss in revenue is equal to the reduction in costs, so $\Delta \Pi = 0$.  Here we will instead assume that $\pi > w$, which means that the firm charges a markup $\mu = \pi / w - 1 > 0$ so that it always makes a profit in the ideal case where $\pi e = D.$
+For some purposes it is more useful to think in relative terms by defining the workforce efficiency $\mathcal{E} = \Pi^{actual}/\Pi^{ideal} $.  The efficiency is at most one, but it can also become negative.  When there are too many workers, i.e. when  $\pi e > D$, the efficiency is
+$$\mathcal{E} = \frac{D - w e}{D - w D/\pi} =  \frac{1 - w e/D}{1 - w/\pi}. $$
+To make this more intuitive, let $\tilde{e} = D/\pi$ be the optimal number of employees at any given time.  Then we can write
+$$\mathcal{E} =  \frac{1 - w e/\pi \tilde{e}}{1 - w/\pi} = \frac{1 + \mu - e/\tilde{e}}{\mu}. $$
+The efficiency is positive as long as $1 + \mu - e/\tilde{e} > 0.$  This also corresponds to the condition for profitability, i.e. $\Pi = \pi \tilde{e} - w e > 0$.  When the markup is low, e.g. 10\%, this means that the firm can become unprofitable with a relatively small excess number of workers, e.g. 10\% more than the optimal number of workers.   
+When there are too few workers, i.e. when $\pi e < D$, the efficiency is $$\mathcal{E} = \frac{\pi e - w e}{D - w D/\pi} =  \frac{e}{\tilde{e}}. $$
+
+This is always positive unless demand goes to zero and the firm fires all its workers.  This illustrates that the penalties for having more vs. less workers is asymmetric -- the penalty for having too many workers is potentially much worse than the penalty for having too few workers.  This is illustrated in the figure.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{firm_profit_efficiency.pdf}
+    \caption{Profits and efficiency as a function of workforce imbalance.  Panel (a) shows the profits for a firm whose ideal number of employees is 1000, using three different markups, with wages set to the average US wage and productivity per worker varying to generate three typical markups.  Panel (b) is the same, but instead plots the efficiency.}
+    \label{fig:profit-efficiency}
+\end{figure}
+
+\section{Employment and vacancy dynamics}
+
+Assume that the demand $D_{it}$ for the product of firm $i$ changes in time.  The firm wishes to maximize its expected profits $E[\Pi_{it}]$.   While it might like to always adjust its employees so that $e_{it} = \tilde{e}_{it}$, in general this will not be possible due to the fact that hiring new employees takes time.  The dynamics of the employment $e_{it}$ for firm $i$ are given by
+\\\begin{equation}
+    \Delta e_{it} = h_tv_{it}\Delta t  - s e_{it}\Delta t - F_{it}\Delta t,
+\end{equation}
+where $\Delta e_{it} = e_{i,t+\Delta t} - e_{it}$ is the change in the number of employees in the interval of length $\Delta t$ between $t$ and $t+ \Delta t$, $v_{it} \ge 0$ is the number of vacancies posted at time $t$, $h_t \ge 0$ is the rate at which employees are hired, $s \ge 0$ is the spontaneous separation rate, and $F_{it} \ge 0$ is the firing rate.  In general hiring is a stochastic process, but here for simplicity assume that it is deterministic so that $h_t v_{it}$ employees are hired in each interval $\Delta t$, and for now let the number of employees be a positive real number.  The rate at which workers ``spontaneously" exit the firm is $s e_{it}$, where we will assume for now that the separation rate $s$ is a constant that is independent of the firm and independent of time.  This represents both workers who quit or retire as well as workers that might be fired for reasons that are not related to changes in demand.  The firing rate $F_{it}$ represents firing above and beyond the spontaneous rate, driven by changes in demand.
+
+We can use this as an iterated map by choosing time units where $\Delta t = 1$ or alternatively divide through by $\Delta t$, take the limit as it goes to zero, and write this as a differential equation,
+\begin{equation}
+    \frac{de_{i}}{dt} = h(u) v_{i}(t)  - s e_{i}(t) - F_{i}(t),
+\end{equation}
+where here we write $h(u)$ to emphasize that the hiring rate will depend on the level of unemployment, defined later, which is an aggregate quantity that depends not just on firm $i$ but on all the firms in the economy.
+
+We assume that the functions $v$ and $F$ that specify hiring and firing are the same for all firms.  The firms vacancies are given by $v_i(t)= v(x_{it}, f^{\tau}_t)$, where $x_{it} = (e_{it} - \tilde{e}_{it})$ is the worker imbalance for firm $i$ at time $t$ and $f^{\tau}_t$ is the firm's probabilistic forecast made at time $t$ for demand at time $t + \tau$, which depends on the underlying stochastic process $D_{it}$.    Assume that when a firm fires workers this instantly reduces the number of workers.   In contrast, as already noted, hiring workers takes time.  For now we will assume that all firms have the same hiring rate, though in reality firms in different sectors or geographic locations, or firms offering different wages, may have very different hiring rates $h_{it}$.
+
+
+
+% In the simulation code, productivity is typically normalized to $\pi_i=1$; target employment is then implemented as $\hat e_i(t)=\sigma_i(1+C_i G(t)+\eta_i(t))$ with optional idiosyncratic AR(1) shocks $\eta_i$ (Section~\ref{sec:idio}), the same algebraic role as $D_i/\pi_i$ after folding productivity into the scale~$\sigma_i$.
+% The firm then minimizes $d_i$ by minimizing the difference $d_i/\pi_i=\hat e-e$.
+
+We will begin by writing down a possible hiring and firing strategy that a firm might follow and explore the vacancy and unemployment dynamics that it generates.  This should be regarded as a heuristic -- it is not clear that there is any demand process for which it is optimal -- but it is a guess at a strategy that may be a reasonable approximation of an optimal strategy for some stochastic processes for the demand.
+
+Consider the following hiring and firing strategy: 
+\begin{eqnarray}
+v_{it} & = & \left[  s e_{it} /h_t - x_{it}\right]^+_{0}, \\
+\nonumber
+F_{it} & = &  [x_{it} - s e_{it} /h_t + h_t v_{it}]^+_{\theta },\\
+\nonumber
+\theta &=& \alpha e_{it}/\tilde{e}_{it}.
+\end{eqnarray}
+The bracket function $ [x]^+_y $ is equal to its argument when it is greater than $y$ and zero otherwise.  See the plot in figure 2, which gives an example with $\theta = 0$ and another example with $\theta = 100$ workers.
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{hire_fire_compare.pdf}
+    \caption{Vacancy posting $v_{it}$ and firing rate $F_{it}$ as
+    functions of the worker imbalance $x_{it} = e_{it} - \tilde e_{it}$,
+    for $s=0.01$, $e_{it}=1000$, $h_t=0.2$. Panel (a): with no firing
+    threshold, the firm transitions smoothly from hiring to firing at
+    $x_{it} = se/h = 50$, where attrition alone balances the imbalance.
+    Panel (b): with a firing threshold of 100, the firm tolerates an
+    overstaffing deadband of $50 < x_{it} < 150$ in which it neither
+    hires nor actively fires, and fires discontinuously once the
+    imbalance exceeds the threshold.}
+    \label{fig:hire-fire-compare}
+\end{figure}
+%and similarly  $ [x]^-_\theta $ is equal to its argument when it is less than $\theta$ and is zero otherwise. 
+
+To understand the equation for vacancies, first assume demand is constant and that at time $t$ the firm has the desired number of workers, i.e. $x_{it} = 0$.  The firm anticipates that during the interval $\Delta t$ between $t$ and $t+1$,  $s e_{it} $ workers will be spontaneously separated.  If the firm were to post $s e_{it}$ vacancies, i.e. if it were to post vacancies only for the jobs of the workers that separate in that period,  it will on average hire $h_t e_{it}s $ replacements in the next period of length $\Delta t$, so in the typical case where $h_t < 1$ it will not have as many workers as it needs.  This means that in order to have $x_{i, t+1} = 0$, it must post  $ e_{it}s/h_t $ vacancies.   If $x_{it} > 0$ this means that the firm has more workers than it needs.  In this case it will post fewer vacancies, and if $e_{it} s/h_t - x_{it} \le 0$, it will post no vacancies at all.
+
+To understand the equation for the firing rate, again first let $\theta = 0$.  In this case the firing strategy $F$ is chosen to anticipate how many workers there will be at time $t+1$ absent firing, and fire as many as needed so that $x_{i, t+1} = 0$.  The anticipated number of  extra workers absent firing is $\hat{x}_{i,t+1} = x_t - s e_{it}/h_t + h_t v_{it}$.  If $x_{it} = 0$, then the vacancy rate has already been chosen to that $h_t v_{it} = s e_{it}/h_t$, so the second two terms sum to zero.  However, if $x_{it} > 0$ then the vacancies have already been reduced in order to reduce the number of workers at time $t+1$.  The inclusion of this term inside the brackets ensures that firing only takes place if it is not possible to reduce the number of workers at time $t+1$ by reducing the vacancies.
+
+The strategy above incorporates the principle that a firm will stop hiring before it starts firing.  This can be viewed as a behavioral rule but it may also make sense rationally.  It is less traumatic for a firm to stop or reduce hiring than it is for it to fire people.  Firing can reduce workforce morale.  A firm might avoid firing to make its workers feel better, but this may also be the best strategy to maximize long-term profits.  Thus this can be viewed as a behavioral modification of profit maximization or it could in fact be a profit maximizing strategy. 
+
+Letting $\theta > 0$ introduces a buffer, allowing an excess of workers up to a limit $\theta$, as shown in Figure 2(b).  Note that when the threshold is hit, the firm fires 100 workers at once, which reduces its workforce from 150 to 50.  Since vacancies are zero, with the expected worker separations, this ensures the $x_{i,t+1} = 0$, i.e. it brings the workforce to the ideal number on the next timestep. A strategy with a buffer makes sense, for example, if the firm has too many workers, but it anticipates that demand will soon rise again and doesn't want to fire workers that would take time to replace in the future.   To make the algorithm independent of size, we choose $\theta = \alpha e_{it}/\tilde{e}_{it}$, where $\alpha \ge 0$; this makes it possible to adjust the size of the buffer proportional to the size of the firm, so that the same value of $\alpha$ can be used for firms of all sizes.  The use of $\theta > 0$ also makes behavioral sense.  It means that firing workers is less common, but when it occurs, there is a large layoff that gets the firing over with.  By analogy with sticky wages, this can be thought of as ``sticky employment".  
+
+Note that for vacancies $\theta = 0$.  The rationale is that if the firm has too many workers, it will not want to post vacancies in any case. 
+
+The performance of this strategy, or any other strategy, will depend on the random process for the demand $D_{it}$.  Suppose, for example, that $D$ follows a random walk, so that it is equally likely to go up or down.  If the loss function were symmetric, the strategy with $\theta = 0$ might be optimal.  However, the loss is larger if there are excess workers than if there are too few workers, which may complicated this -- it might even imply that the firm is better off ensuring a buffer so that it typically doesn't fully satisfy demand.  Making $\theta > 0$ results in more tolerance for excess workers, which could make this worse.  Though if demand is growing, e.g. if it is a random walk with positive drift, it might make sense to let $\theta > 0$.  (We should consider using the actual GDP process rather than the detrended GDP process, as this is what real firms face.)
+
+ A more realistic model is that demand is correlated to GDP, in which case it should follow a similar process.  The fact that GDP follows an AR processes indicates that it mean reverts, which implies that if GDP is below its trend, it is more likely to increase.  This in turn means that a strategy with $\theta > 0$ might do better than a strategy with $\theta = 0$.  (If we do use actual GDP rather than detrended GDP we will need to adjust the AR process so that it reverts to an ever-increasing value rather than reverting to a constant value). 
+
+ An economist would begin by assuming that the firms forecasts are consistent with the underlying random process that GDP follows, and try to derive the hiring and firing strategy that maximizes their profits when this is true.  This is non-trivial, because the firm needs to plan more than one step into the future to do this optimally.  A typical approach would involve writing down a Bellman equation and trying to solve it.  This is hard -- I don't think we should do that now, but it is worth thinking about what that might entail, and we might want to consider making a myopic approximation, such as finding a strategy that optimizes one step ahead.

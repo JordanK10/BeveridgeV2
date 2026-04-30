@@ -1,0 +1,33 @@
+SKEW REPORT - 
+(excludes acute COVID period)
+======================================================================
+
+Data period: 2000-12-01 to 2026-02-01 (188 monthly changes)
+Exclude 2020-03 through 2020-06: 192 monthly changes
+
+UNEMPLOYMENT CHANGE (Δu)
+  Mean: -0.000287
+  Std:  0.005333
+  Range: [-0.018000, 0.067000]
+  Skewness: 10.4440
+  Upper tail exponent: 0.2691
+  Lower tail exponent: 0.6304
+
+VACANCY CHANGE (Δv)
+  Mean: 0.000017
+  Std:  0.001758
+  Range: [-0.008000, 0.005000]
+  Skewness: -0.1219
+  Upper tail exponent: 1.9156
+  Lower tail exponent: 0.9185
+
+GDP LOG-GROWTH (G)
+  Mean: 0.001773
+  Std:  0.002889
+  Range: [-0.027200, 0.024033]
+  Skewness: -2.2926
+  Upper tail exponent: 0.6030
+  Lower tail exponent: 0.3746
+
+
+Exclude 2020-03 through 2021-12: 170 monthly changes (excludes entire COVID disruption)

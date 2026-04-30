@@ -1,0 +1,28 @@
+ANTOINE REFERENCE PERIOD COMPARISON (2000-2018)
+======================================================================
+
+Data period: 2000-12-01 to 2026-02-01 (301 monthly changes)
+
+UNEMPLOYMENT CHANGE (Δu)
+  Mean: 0.000017
+  Std:  0.006547
+  Range: [-0.022000, 0.104000]
+  Skewness: 13.0562
+  Upper tail exponent: 0.2788
+  Lower tail exponent: 0.5422
+
+VACANCY CHANGE (Δv)
+  Mean: 0.000017
+  Std:  0.001839
+  Range: [-0.008000, 0.006000]
+  Skewness: -0.1234
+  Upper tail exponent: 1.4873
+  Lower tail exponent: 0.9641
+
+GDP LOG-GROWTH (G)
+  Mean: 0.001736
+  Std:  0.004189
+  Range: [-0.028711, 0.025456]
+  Skewness: -1.7851
+  Upper tail exponent: 0.6276
+  Lower tail exponent: 0.3982

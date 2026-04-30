@@ -1,0 +1,185 @@
+================================================================================
+FIT REPORT (UPDATED): BeveridgeV2 Model Improvements
+Generated: 2026-04-08
+Sample window: January 2001 – December 2018
+================================================================================
+
+This report documents improvements made since fit_report1.txt and the current
+state of the model. Refer to fit_report1.txt for the original baseline.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. IMPROVEMENTS SINCE fit_report1.txt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A. GDP SIGNAL — FIXED INTERPOLATION BUG
+  Previously: quarterly GDP was forward-filled to monthly, so G(t) was zero
+  for 2 out of every 3 months (the 2/3-zeros problem). The model barely saw
+  any GDP variation between quarters.
+  Fix: switched to linear time-interpolation of quarterly GDP, then take the
+  3-month log-difference G(t) = log(GDP_t) − log(GDP_{t-3}). This gives a
+  smoothly varying monthly signal with proper sign changes across cycles.
+  Impact: u-v correlation improved from +0.07 → −0.57 (sign corrected).
+
+B. GDP SIGNAL — REPLACED HP FILTER WITH QUARTERLY LOG-DIFF
+  An HP filter was tested but rejected due to severe end-point bias: the
+  2000–2026 sample made the early 2000s look permanently below trend even
+  during the 2003–2007 expansion. The quarterly log-diff avoids this and
+  correctly identifies recessions (negative G) and expansions (positive G).
+
+C. JOLTS PARSING — FIXED SERIES ID BUG
+  Series ID was being read from metadata row 2 (NaN) instead of row 3.
+  Fix: corrected row index. v_obs now uses real JOLTS Job Openings Rate
+  (JTS000000000000000JOR) rather than the synthetic proxy v = 0.035 − 0.3u.
+  Real JOLTS vacancy range: [1.7%, 4.8%], mean 3.1% — credible values.
+
+D. VACANCY RATE STEADY STATE — RAISED K FROM 3.5 TO 5.4
+  The steady-state vacancy rate is v_ss ≈ s/(K·u). With K=3.5, s=0.01, u=0.06:
+  v_ss ≈ 4.8% — well above the empirical mean of 3.1%.
+  Setting K=5.4 gives v_ss ≈ 0.01/(5.4×0.06) = 3.1%, matching the target.
+  Impact: simulated v range narrowed from [0, 7%] → [0, 5%], matching JOLTS.
+
+E. C DISTRIBUTION — FATTER TAIL, FEWER ZERO-SENSITIVITY FIRMS
+  Original: c_exponent=2.0, zero_fraction=0.25
+  Current:  c_exponent=1.2, zero_fraction=0.0625 (halved twice)
+  Rationale: more firms respond to GDP → stronger aggregate demand transmission.
+  c_max raised from 0.08 → 0.15 to allow larger individual sensitivity.
+
+F. IDIOSYNCRATIC SHOCK STD — RESTORED TO ANTOINE'S VALUE
+  Was inadvertently reduced to 0.001 during debugging. Restored to 0.0089
+  (matching Antoine's calibrated value), restoring cross-sectional dispersion.
+
+G. FIRING THRESHOLD θ — IMPLEMENTED (was documented but missing)
+  Documented in docs/discrete.txt but flagged as unimplemented.
+  Implemented: firms only fire when fractional excess (e − ê)/ê > α.
+  α=0 recovers original instantaneous firing; α=0.10 is current default.
+  Impact: skew(Δu) improved dramatically from +0.83 → +0.44 (target: +0.45).
+  skew(u) improved from +1.95 → +0.95 (target: +0.81).
+
+H. HIRING EFFICIENCY φ — IMPLEMENTED BUT CURRENTLY DISABLED
+  Added φ ∈ (0,1] scaling the fill rate: hires = φ·v·m·dt. Lower φ slows
+  hiring without changing vacancy posting. Testing showed that reducing φ
+  below 1.0 degrades corr(u,v) significantly while u mean shifts upward.
+  Code is preserved (commented out in update_employment); not in calibration.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. CURRENT MODEL STATISTICS vs EMPIRICAL TARGET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Parameters: K=5.4, s=0.01, c_max=0.15, c_exponent=1.2,
+            zero_fraction=0.0625, firing_threshold=0.10, n_firms=250
+
+                        Empirical       Baseline        Current
+                        target          (fit_report1)   (this report)
+                        ──────────      ────────────    ─────────────
+u mean                  0.061           0.057           0.058
+u std                   0.018           0.005 ✗         0.012 ↑
+u range                 [.035, .100]    [.049, .079] ✗  [.016, .084] ~
+v mean                  0.031           0.055 ✗         0.035 ✓
+v std                   0.007           0.006           0.011 ~
+corr(u,v)               −0.747          −0.577          −0.517 ~
+skew(u)                 +0.816          +1.842 ✗        +0.951 ✓
+skew(v)                 +0.455          −4.804 ✗        −0.613 ↑
+skew(Δu)                +0.447          +0.834 ✗        +0.445 ✓✓
+skew(Δv)                +0.082          −9.957 ✗        −1.283 ↑
+
+Key:  ✓ = within 20% of target   ↑ = improved   ~ = moderate   ✗ = poor
+
+Summary of gains vs fit_report1:
+  - u std:    0.005 → 0.012  (2.4× improvement)
+  - v mean:   0.055 → 0.035  (matches empirical 0.031)
+  - skew(u):  1.842 → 0.951  (within 17% of target)
+  - skew(Δu): 0.834 → 0.445  (essentially exact)
+  - skew(Δv): −9.957 → −1.283 (8× improvement, still wrong sign)
+  - skew(v):  −4.804 → −0.613 (8× improvement, still wrong sign)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. MATCHING RATE AND VACANCY LEVEL: PARAMETER INTERACTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The steady-state vacancy rate and matching half-life are coupled through K:
+
+    v_ss = s / (K · u_ss)          [vacancy level]
+    t_½  = ln(2) / (K · u_ss)      [unemployment half-life]
+
+With u_ss ≈ 0.05, s = 0.01:
+    K=3.5  →  v_ss=5.7%,  t_½=4.0 months   (too many vacancies, fast recovery)
+    K=5.4  →  v_ss=3.7%,  t_½=2.6 months   (vacancy OK, recovery too fast)
+    K=2.31 →  v_ss=8.7%,  t_½=6.0 months   (too many vacancies, longer recovery)
+
+The tension: hitting v_ss=3.1% requires high K (fast recovery), but realistic
+unemployment cycles require slow recovery (low K). These goals pull in opposite
+directions using K alone.
+
+PARAMETER COMBINATIONS THAT COULD BREAK THE TENSION:
+
+Option A — Lower s (reduce separations)
+  v_ss = s/(K·u) is linear in s. Halving s to 0.005 at K=2.5 gives:
+  v_ss = 0.005/(2.5·0.05) = 4.0%  and  t_½ = ln(2)/(2.5·0.05) = 5.5 months.
+  Closer to both targets simultaneously. s is currently bounded [0.005, 0.02];
+  the lower bound should allow this. Risk: s=0.005/month may be too low
+  economically (JOLTS separation rate is ~3.6%/month, but that includes quits).
+
+Option B — Bilinear matching m = K·u·v  (Antoine's formulation)
+  In steady state: s·(1−u) = K·u·v → v_ss = s(1−u)/(K·u).
+  With K=1.5, s=0.01, u=0.05: v_ss = 0.0095/(1.5·0.05) = 1.9%.
+  The half-life becomes: t_½ = ln(2)/(K·v_ss) — dependent on v, not u.
+  This decouples the two constraints. Bilinear matching is also theoretically
+  more standard (Cobb-Douglas matching function with η=0.5).
+
+Option C — Partial firing speed (generalize firing_threshold further)
+  Rather than a hard threshold α, implement exponential adjustment:
+    firing(t) = δ · max(0, e − ê)   where δ ∈ (0,1] is firing speed.
+  δ=1 is instantaneous (current), δ=0.2 means 5-month adjustment.
+  This slows firing independently of K, potentially allowing lower K
+  (slower recovery) without needing to change the matching structure.
+
+Option D — Separate matching rate from K via market tightness
+  The current m=K·u conflates matching efficiency and market tightness.
+  A richer matching function m = μ·(V/U)^η where μ is efficiency and η
+  is the Beveridge elasticity could allow V/U (tightness) to vary while
+  K (efficiency) stays matched to the half-life target.
+
+RECOMMENDED APPROACH: Try Option A first (lower s bound, recalibrate),
+then Option B (bilinear matching) if A is insufficient.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. REMAINING GAPS AND NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OUTSTANDING ISSUES (in order of severity):
+
+1. skew(Δv) = −1.28 vs target +0.08 (wrong sign)
+   Root cause: vacancy hard floor at zero creates asymmetric collapses.
+   Fix options: (a) partial firing speed (Option C above), (b) bilinear
+   matching, (c) add a vacancy adjustment cost / smoothing.
+
+2. corr(u,v) = −0.52 vs target −0.75
+   The Beveridge correlation is improving but still too weak.
+   Likely tied to GDP signal amplitude — c_max calibration should help.
+
+3. u lower bound too low (sim u_min = 1.6% vs emp 3.5%)
+   During booms the model over-employs. Possible fix: add a lower bound
+   on unemployment (structural/frictional floor) or reduce c_max.
+
+NEXT STEPS (priority order):
+
+1. Complete the current differential_evolution calibration run and
+   review optimized parameters for s, c_max, c_exponent, zero_fraction,
+   firing_threshold.
+
+2. Lower s bound from 0.005 to 0.003 and allow K to drop to 2.5–3.0
+   in a joint (K, s) calibration sweep to break the matching/vacancy tension.
+
+3. Implement bilinear matching m = K·u·v as an alternative model variant
+   and compare fit statistics.
+
+4. Add skew(Δu) and skew(Δv) terms to the loss function so the optimizer
+   directly penalizes the skewness failures.
+
+5. Add histogram panels (Δu, Δv distributions) to overlay_comparison.pdf
+   to make skewness comparison visually immediate.
+================================================================================

@@ -1,0 +1,83 @@
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+/Users/kempj/.local/lib/python3.12/site-packages/openpyxl/styles/stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+Loading empirical data...
+Saved empirical data to data/empirical_data.csv
+  Shape: (303, 5)
+  Date range: 2000-12-01 00:00:00 to 2026-02-01 00:00:00
+  GDP lag: 0 months
+
+Summary statistics:
+            u_obs       v_obs             G       s_obs  gdp_real_level
+count  229.000000  303.000000  3.030000e+02  303.000000      303.000000
+mean     0.059729    0.036667  1.896458e-10    0.036155    18495.630050
+std      0.018022    0.012614  2.500000e-01    0.005850     2805.525791
+min      0.035000    0.017000 -1.790696e+00    0.030000    14183.120000
+25%      0.047000    0.027000 -8.417312e-02    0.033000    16416.685198
+50%      0.055000    0.033000  1.891586e-02    0.036000    17860.450000
+75%      0.072000    0.044000  1.409893e-01    0.038000    20619.838837
+max      0.100000    0.075000  4.613714e-01    0.108000    24065.956000
+Empirical moments:
+  skew(u)  = 0.8185
+  skew(v)  = 0.4177
+  skew(Δu) = 0.4355
+  corr(u,v)= -0.7736
+
+Running scan 1: c_max × c_exponent ...
+  scan1 running 256 points with 8 workers...
+  scan1 scan complete.
+  Saved output/residual_plots/scan1_cmax_cexp_skew_u.pdf
+  Saved output/residual_plots/scan1_cmax_cexp_skew_v.pdf
+  Saved output/residual_plots/scan1_cmax_cexp_skew_du.pdf
+  Saved output/residual_plots/scan1_cmax_cexp_corr_uv.pdf
+  Saved output/residual_plots/scan1_cmax_cexp_combined.pdf
+
+Running scan 2: idio_std × firing_threshold ...
+  scan2 running 256 points with 8 workers...
+  scan2 scan complete.
+  Saved output/residual_plots/scan2_idio_ft_skew_u.pdf
+  Saved output/residual_plots/scan2_idio_ft_skew_v.pdf
+  Saved output/residual_plots/scan2_idio_ft_skew_du.pdf
+  Saved output/residual_plots/scan2_idio_ft_corr_uv.pdf
+  Saved output/residual_plots/scan2_idio_ft_combined.pdf

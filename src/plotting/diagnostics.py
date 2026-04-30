@@ -7,6 +7,7 @@ from scipy.stats import skewnorm
 import mpl_toolkits.axes_grid1.axes_divider as divider
 
 from plotting.paths import OUTPUT_DIR
+from plotting.rates import aggregate_vacancy_rate
 from time_grid import STEPS
 
 
@@ -37,7 +38,7 @@ def plot_fluctuation_analysis(
     firms=None,
 ):
     """
-    Plots histograms of unemployment rate u=U/L, vacancy rate V/(V+E), and log growth of
+    Plots histograms of unemployment rate u=U/L, vacancy rate v/(v+e), and log growth of
     aggregate labor demand D(t)=sum_i ê_i(t), plus 2D heatmaps (rates vs that growth).
 
     When ``firms`` is provided, third column and bottom-row x-axes use
@@ -63,15 +64,8 @@ def plot_fluctuation_analysis(
     unemployment_np = np.array(aggregate_unemployment)[burn_in:]
     vacancies_np = np.array(aggregate_vacancies)[burn_in:]
 
-    employment_np = population - unemployment_np
     unemployment_rate = unemployment_np / population
-    denom_v = vacancies_np + employment_np
-    vacancy_rate = np.divide(
-        vacancies_np,
-        denom_v,
-        out=np.zeros_like(vacancies_np, dtype=float),
-        where=denom_v > 0,
-    )
+    vacancy_rate = aggregate_vacancy_rate(unemployment_np, vacancies_np, population)
 
     unemployment_rate_lag = unemployment_rate[:-1]
     vacancy_rate_lag = vacancy_rate[:-1]
@@ -138,7 +132,7 @@ def plot_fluctuation_analysis(
     axs[0, 0].grid(True)
     axs[0, 0].legend()
 
-    # Subplot 2: Histogram of vacancy rate V/(V+E) (same as vacancy_and_unemployment_rates in rates.py)
+    # Subplot 2: Histogram of vacancy rate v/(v+e) (see vacancy_and_unemployment_rates in rates.py)
     axs[0, 1].hist(vacancy_rate, bins=30, density=True, edgecolor='black', alpha=0.7, color='orange', label='Histogram')
     # Fit a Skew-Normal distribution
     a_v, loc_v, scale_v = skewnorm.fit(vacancy_rate)
@@ -154,7 +148,7 @@ def plot_fluctuation_analysis(
         label=rf"Skew-Normal fit ($\gamma_1$={g1_v:.3f}, loc={loc_v:.2f}, scale={scale_v:.2f})",
     )
     axs[0, 1].set_title("Histogram of Vacancy Rate")
-    axs[0, 1].set_xlabel("Vacancy rate V / (V + E)")
+    axs[0, 1].set_xlabel(r"Vacancy rate $v/(v+e)$")
     axs[0, 1].set_ylabel("Density")
     axs[0, 1].grid(True)
     axs[0, 1].legend()
@@ -199,7 +193,7 @@ def plot_fluctuation_analysis(
         axs[1, 0].plot(unemployment_rate, vacancy_rate, 'white', alpha=0.5, linewidth=1)
     axs[1, 0].set_title("Unemployment Rate vs. Vacancy Rate")
     axs[1, 0].set_xlabel("Unemployment rate u = U / L")
-    axs[1, 0].set_ylabel("Vacancy rate V / (V + E)")
+    axs[1, 0].set_ylabel(r"Vacancy rate $v/(v+e)$")
     fig.colorbar(hb5[3], ax=axs[1, 0], label='Density')
     axs[1, 0].grid(True)
 
@@ -242,7 +236,7 @@ def plot_fluctuation_analysis(
         )
     axs[1, 2].set_title(growth_title_heat_v)
     axs[1, 2].set_xlabel(growth_xlabel)
-    axs[1, 2].set_ylabel("Vacancy rate V / (V + E)")
+    axs[1, 2].set_ylabel(r"Vacancy rate $v/(v+e)$")
     fig.colorbar(hb4[3], ax=axs[1, 2], label='Density')
     axs[1, 2].grid(True)
 

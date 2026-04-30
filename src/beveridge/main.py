@@ -4,17 +4,17 @@ import os
 
 import numpy as np
 
-from . import config
-from .c_distribution_sweep import format_c_sweep_subtitle, run_c_distribution_sweep
-from .experiments import (
+import config
+from c_distribution_sweep import format_c_sweep_subtitle, run_c_distribution_sweep
+from experiments import (
     run_gdp_shock_response_experiment,
     run_multi_firm_simulation,
     run_single_timeseries,
     run_uv_crosscorr_experiment,
 )
-from .signals import GDP
-from plotting.c_sweep_figs import plot_c_sweep_grid, plot_c_sweep_grid_multi
-from plotting.diagnostics import plot_matching_time_vs_K, plot_matching_time_vs_urate
+from signals import GDP
+from src.plotting.c_sweep_figs import plot_c_sweep_grid, plot_c_sweep_grid_multi
+from src.plotting.diagnostics import plot_matching_time_vs_K, plot_matching_time_vs_urate
 
 # (GDP column name, subdirectory suffix under output/) for multi-firm runs
 MULTI_FIRM_SIGNALS = (
@@ -46,8 +46,8 @@ def main():
             num_firms=config.MULTI_FIRM_COUNT,
             c_distribution_method="power_law",
             c_params={
-                "c_max": 0.08,
-                "exponent": 2.0,
+                "c_max": 0.3,
+                "exponent": 0.8,
                 "zero_fraction": 0.25,
                 "seed": 42,
                 "power_law_flip": True,
@@ -77,8 +77,8 @@ def run_c_sweep_cli(power_law_flip=True):
     out_root = os.path.join(config.OUTPUT_DIR, "c_distribution_sweep")
     exponent_grid = np.linspace(1.2, 6.0, 10)
     c_params_base = {
-        "c_max": 0.08,
-        "exponent": 2.0,
+        "c_max": 0.3,
+        "exponent": .8,
         "zero_fraction": 0.25,
         "seed": 42,
         "power_law_flip": bool(power_law_flip),

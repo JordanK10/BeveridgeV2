@@ -1,7 +1,7 @@
 """Beveridge figure exports and aggregate rate helpers."""
 
 from plotting.paths import OUTPUT_DIR
-from plotting.rates import compute_rates, vacancy_and_unemployment_rates
+from plotting.rates import aggregate_vacancy_rate, compute_rates, vacancy_and_unemployment_rates
 from plotting.beveridge_figs import (
     plot_aggregate_overview,
     plot_beveridge_comparison,
@@ -9,6 +9,8 @@ from plotting.beveridge_figs import (
     plot_efficiency_time_series,
     plot_employment_growth_rate,
     plot_multi_employment,
+    plot_multi_firm_signal_gap_scatters,
+    plot_multi_firm_skewness_bars,
     plot_response_to_demand,
     plot_vacancy_time_series,
 )
@@ -24,6 +26,7 @@ from plotting.diagnostics import (
 
 __all__ = [
     "OUTPUT_DIR",
+    "aggregate_vacancy_rate",
     "compute_rates",
     "vacancy_and_unemployment_rates",
     "plot_aggregate_overview",
@@ -39,6 +42,8 @@ __all__ = [
     "plot_matching_time_vs_K",
     "plot_matching_time_vs_urate",
     "plot_multi_employment",
+    "plot_multi_firm_signal_gap_scatters",
+    "plot_multi_firm_skewness_bars",
     "plot_response_to_demand",
     "plot_vacancy_time_series",
 ]

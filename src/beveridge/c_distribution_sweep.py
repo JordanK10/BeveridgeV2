@@ -62,7 +62,7 @@ def compute_post_burn_in_observables(
     max_lag_steps,
 ):
     """
-    Post–burn-in statistics on aggregate rates u=U/L, v=V/(V+E), plus UV joint metrics.
+    Post–burn-in statistics on aggregate rates u=U/L, v=v/(v+e), plus UV joint metrics.
 
     Uses the same rate construction as ``plot_fluctuation_analysis`` / UV CCF helpers.
     """

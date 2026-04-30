@@ -358,6 +358,25 @@ For multi-firm simulations, initial employment is set analogously for each firm 
 The system's characteristic relaxation time is of order $\tau \approx 1/(K u^* + s)$ in model time units (see code defaults for $K$, $\Delta t$, and burn-in length).
 To ensure all reported statistics and plots reflect steady-state dynamics, an initial burn-in is discarded (calendar-equivalent to the former 2000 steps at $\Delta t=0.1$, i.e.\ 200 time units).
 
+\subsection{GDP shock response experiments}
+\label{sec:shock_response}
+
+To isolate the impulse-response behavior of the model, we run shock experiments where the economy begins in steady state (after burn-in at $G=0$), then experiences a permanent step change in the signal $G(t)$ to a new constant level $g \in \{-1.0, -0.5, -0.3, -0.1, 0.1, 0.2, 0.3, 0.4\}$.
+The resulting unemployment rate $u(\tau)$, vacancy rate $v/(v+e)(\tau)$, and demand-employment gap $(D-E)/L(\tau)$ are tracked over a window $\tau \geq 0$ (time since shock) to visualize how the system relaxes toward the new steady state.
+
+This experiment reveals three key dynamics:
+
+\begin{enumerate}
+    \item \textbf{Asymmetric response to shocks:} Negative shocks (demand drops) trigger rapid employment cuts due to instantaneous firing when $e > \hat e$, causing unemployment to spike immediately. Vacancies also fall sharply. Positive shocks (demand rises) are slower to unfold because hiring is constrained by the matching function $m = K u$; firms must post vacancies and wait for the gradually-declining unemployment pool to fill them, producing a slower rise in employment and a slower recovery of vacancies. This asymmetry is a key feature of the model and relates to the empirical observation of sharp recessions and gradual expansions.
+
+    \item \textbf{Beveridge curve paths:} As the system relaxes, the trace of $(u, v)$ pairs over time describes a locus in the Beveridge plane. Negative shocks produce a loop with an immediate northwest movement (unemployment rises, vacancies collapse) followed by gradual eastward drift (slow hiring); positive shocks produce a slower southeastern movement as unemployment falls and vacancies rise together.
+
+    \item \textbf{Demand-employment gap dynamics:} The gap $\hat D - e = (D - E) / L$ reflects how far firms are from their target employment. After a negative shock, this gap is large (firms want fewer workers than they have), and it closes via firing and separations. After a positive shock, the gap opens (firms want more workers) and closes slowly via matching-limited hiring.
+\end{enumerate}
+
+The relaxation time and overshoot depend on the matching rate $K$: a larger $K$ accelerates hiring and therefore speeds recovery after positive shocks, but the stability condition $K u_{\max} \Delta t < 1$ constrains how aggressive matching can be.
+This experiment provides a clean diagnostic of the model's hiring and firing asymmetry and validates the discrete mechanics against the continuous-time equations.
+
 Figures 1 and 2 demonstrate the simulation and some theory (namely eq 17). Figure 3 demonstrates the model response to the AR(2) signal defined above.
 \begin{figure}
     \centering
@@ -385,6 +404,13 @@ Figures 1 and 2 demonstrate the simulation and some theory (namely eq 17). Figur
     \includegraphics[width=\linewidth]{sweep.pdf}
     \caption{Parameter sweeps in sensitivity $C$ (top) and matching constant $K$. With static $m=Ku$, varying $K$ and $C$ leave the Beveridge curve shape largely unchanged in this diagnostic.}
     \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{gdp_shock_response/gdp_shock_response_U_V.pdf}
+    \caption{GDP shock response: impulse-response behavior for step shocks in $G(t)$. \textbf{Top row:} unemployment rate $u=U/L$ (left), vacancy rate $v/(v+e)$ (center), and demand-employment gap $(D-E)/L$ (right), traced over time $\tau$ following the shock onset at $\tau=0$. Each colored line corresponds to a different post-shock signal level $g$, with cool colors for negative shocks and warm colors for positive shocks. \textbf{Bottom row:} \textbf{Left:} negative shocks showing rapid unemployment spike and vacancy collapse. \textbf{Center:} positive shocks showing slower, gradual hiring and recovery. \textbf{Right:} Beveridge-plane trajectory traced over the post-shock window, with each colored path showing the UV locus for a given shock size. The asymmetry between fast downturns (NW movement) and slow recoveries (SE movement) is the hallmark of the model's matching friction and instantaneous firing.}
+    \label{fig:shock_response}
 \end{figure}
 
 \section{Multifirm matching dynamics}
@@ -665,5 +691,43 @@ Now, lets redefine $U$ to be a function of other firms' employment state $U=U(V,
 \begin{equation}
    \frac{d}{dV_{-i}}\textrm{E}[M_i|v_i]=\frac{\partial \textrm E[M_i|v_i]}{\partial U}\frac{\partial U}{\partial V_{-i}}+ \frac{\partial \textrm E[M_i|v_i]}{\partial v_i}\frac{\partial v_i}{\partial V_{-i}}
 \end{equation}
-The second term of the second partial derivative is zero in our model, as firms do not directly respond to the volume of other firm's postings. We know from the earlier equations that $\frac{\partial U}{\partial V_{-i}}$ is probably negative, and the first partial derivative of that term is positive. Therefore increasing vacancies of other firms drives the total matching of our firm down.  
+The second term of the second partial derivative is zero in our model, as firms do not directly respond to the volume of other firm's postings. We know from the earlier equations that $\frac{\partial U}{\partial V_{-i}}$ is probably negative, and the first partial derivative of that term is positive. Therefore increasing vacancies of other firms drives the total matching of our firm down.
+
+\section*{Addendum: Divergences between this document and the current implementation}
+\label{sec:addendum}
+
+A systematic comparison of the equations in this document against the code at the time of writing (April 2026) reveals four divergences.
+All core mechanics---vacancy posting, hiring, firing, the matching function, idiosyncratic shocks, the power-law $C$ distribution, and the stability condition---are faithfully implemented.
+
+\subsection*{1. Matching rate constant $K$ is stale}
+
+Section~\ref{sec:multifirm_calib} and the stability analysis cite $K = 0.54\,\text{time}^{-1}$ as the calibrated value for $\Delta t = 1$.
+The current value in \texttt{src/beveridge/config.py} is $K = 3.5$ (with a comment noting it was 0.54 before a subsequent calibration sweep).
+The document has not been updated to reflect this change.
+All structural results and the stability condition $K\,u_{\max}\,\Delta t < 1$ remain valid; only the numerical value of $K$ cited here is out of date.
+
+\subsection*{2. AR(2) signal: growth rates used as levels}
+
+Section~\ref{sec:simulation_results} describes the signal as a rescaled AR(2) series with amplitude $\sigma_G = 0.25$, implying $G(t)$ is a dimensionless level index.
+In the code (\texttt{src/beveridge/signals.py}), the AR(2) \emph{growth rate} series $\{g_t\}$ is mean-centered and rescaled directly:
+\begin{equation}
+    G(t) = \frac{g_t - \bar g}{\mathrm{std}(g_t)} \cdot 0.25.
+\end{equation}
+No integration from growth rates to a level index is performed; the growth rate series itself plays the role of $G(t)$ throughout.
+This document presents $G(t)$ as though it were a level, which is potentially misleading: the firm demand equation $\hat e_i = \sigma_i(1 + C_i G(t))$ is driven by a centered, rescaled growth rate, not by a cumulative level of economic activity.
+
+\subsection*{3. Single-firm initialization: vacancies start at zero, not flow-balanced}
+
+Section~\ref{sec:simulation_results} states that initial vacancies are set to the flow-balanced value $v_0 = e_0 s / m(u_0)$, placing the system exactly on the Beveridge curve at $t=0$.
+In practice (\texttt{src/beveridge/experiments.py}, \texttt{run\_simulation\_for\_signal}), initial vacancies are passed as \texttt{INIT\_VACANCIES[0] = 0}.
+The firm self-corrects on the first call to \texttt{update\_vacancies}, so the discrepancy lasts only one time step and is absorbed by the burn-in period; it does not affect steady-state statistics.
+The multi-firm runner (\texttt{\_run\_multi\_firm\_core}) likewise initializes all firms with zero vacancies.
+
+\subsection*{4. Within-step firm update order}
+
+The document treats vacancy posting and employment adjustment as conceptually simultaneous for all firms within a time step.
+The simulation loop in \texttt{src/beveridge/economy.py} (\texttt{run\_market}) iterates over firms sequentially within each step: for each firm it calls \texttt{update\_vacancies} then \texttt{update\_employment} before moving to the next firm.
+As a result, firms later in the list see an unemployment level $U(t)$ that already reflects the employment changes of earlier firms within the same step, rather than the unemployment at the start of the step.
+For large $N$ this ordering effect averages out, but it is a real deviation from the simultaneous-update description implied by the equations.
+
 \end{document}
